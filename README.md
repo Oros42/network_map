@@ -15,19 +15,19 @@ Run
 1. Start sniffing :  
 ```sudo ./sniffer.php run```  
   
-2. Watch who talk to who (You can run it in an other termial during the sniffing)  
+2. Watch who talk to who (You can run it in an other termial during the sniffing) :  
 ```./sniffer.php show```  
   
-3. You can create a svg graph  
+3. You can create a svg graph :  
 ```./sniffer.php map```  
   
-4. Or a js graph  
+4. Or a js graph :  
 ```./sniffer.php js```  
-	And open index.html
+	and open index.html
 
 Licence
 =======
 
-cytoscape.min.js comme from https://github.com/cytoscape/cytoscape.js/  
+cytoscape.min.js comes from https://github.com/cytoscape/cytoscape.js/  
   
 All other files are under CC0 1.0 Universal  

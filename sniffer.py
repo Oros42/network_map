@@ -91,11 +91,11 @@ js : dump the DB into a JS file
 
 Exemples :
 In Terminal 1
-sudo ./sniffer.php run
+sudo ./sniffer.py run
 #sniff all IPs on the network
 
 In Terminal 2
-./sniffer.php show
+./sniffer.py show
 192.168.0.42 -> 192.168.0.1
 192.168.0.1 <- 192.168.0.42
 192.168.0.42 -> 192.168.0.64
