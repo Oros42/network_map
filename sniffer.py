@@ -12,10 +12,7 @@
 # sudo ./sniffer.py
 #
 import sys
-from scapy.all import *
 from pyspatialite import dbapi2 as sqlite3
-import json
-import io
 
 conn = sqlite3.connect('ips.db')
 c = conn.cursor()
@@ -84,10 +81,10 @@ def gen_links():
 
 
 def get_nb_ips():
-	print("\nNb ips : {}".format(len(get_uniques_ips())))
+	print("Nb ips : {}".format(len(get_uniques_ips())))
 
-if len(sys.argv) < 2:
-    print("""Need parameters :
+def help():
+	print("""Need parameters :
 run : start sniffing
 show : show connexions
 ip : list all IPs
@@ -105,6 +102,9 @@ In Terminal 2
 192.168.0.1 <- 192.168.0.42
 192.168.0.42 -> 192.168.0.64
 ...""")
+
+if len(sys.argv) < 2:
+    help()
     sys.exit(1)
 
 action=sys.argv[1]
@@ -113,12 +113,16 @@ if action == "show":
 elif action == "map":
 	gen_map()
 elif action == "js":
+	import json
+	import io
 	gen_links()
 elif action == "ip":
 	get_ips()
 elif action == "nbip":
 	get_nb_ips()
 elif action =="run":
+	from scapy.all import *
 	run_sniff()
 else:
 	print("What?")
+	help()
