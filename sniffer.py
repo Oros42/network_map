@@ -83,10 +83,18 @@ def gen_links():
 		f.write("var elements="+unicode(json.dumps(elements, ensure_ascii=False))+";")
 
 
+def get_ips():
+	i=0;
+	for ip in get_uniques_ips():
+		i+=1
+		print("{} : {}".format(i,ip))
+	print("\nNb ips : {}".format(i))
+
 if len(sys.argv) < 2:
     print("""Need parameters :
 run : start sniffing
-show : show IPS
+show : show connexions
+ip : list all IPs
 js : dump the DB into a JS file
 
 Exemples :
@@ -109,5 +117,7 @@ elif action == "map":
 	gen_map()
 elif action == "js":
 	gen_links()
+elif action == "ip":
+	get_ips()
 else:
 	run_sniff()
