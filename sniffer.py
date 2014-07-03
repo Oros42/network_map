@@ -83,12 +83,8 @@ def gen_links():
 		f.write("var elements="+unicode(json.dumps(elements, ensure_ascii=False))+";")
 
 
-def get_ips():
-	i=0;
-	for ip in get_uniques_ips():
-		i+=1
-		print("{} : {}".format(i,ip))
-	print("\nNb ips : {}".format(i))
+def get_nb_ips():
+	print("\nNb ips : {}".format(len(get_uniques_ips())))
 
 if len(sys.argv) < 2:
     print("""Need parameters :
@@ -96,6 +92,7 @@ run : start sniffing
 show : show connexions
 ip : list all IPs
 js : dump the DB into a JS file
+nbip : number of IPs
 
 Exemples :
 In Terminal 1
@@ -119,5 +116,9 @@ elif action == "js":
 	gen_links()
 elif action == "ip":
 	get_ips()
-else:
+elif action == "nbip":
+	get_nb_ips()
+elif action =="run":
 	run_sniff()
+else:
+	print("What?")
