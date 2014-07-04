@@ -108,7 +108,7 @@ def get_stat():
 	while a:
 		print("{} : {}".format(a[0],a[1]))
 		a= c.fetchone()
-
+	get_nb_ips()
 
 def help():
 	print("""Need parameters :
