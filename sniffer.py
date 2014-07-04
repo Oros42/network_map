@@ -13,27 +13,36 @@
 #
 import sys
 from pyspatialite import dbapi2 as sqlite3
+import socket
 
 conn = sqlite3.connect('ips.db')
 c = conn.cursor()
-c.execute("CREATE TABLE if not exists connexions ( ip_from varchar(30), ip_to varchar(30), UNIQUE(ip_from,ip_to));")
+c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port));")
 conn.commit()
 
+def get_my_ip():
+	# bof bof
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s.connect(("gnu.org",80))
+	ip=s.getsockname()[0]
+	s.close()
+	return ip
 
 def add_ips(x):
-	c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to) VALUES ('{}', '{}');".format(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%")))
+	c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to, to_port) VALUES ('{}', '{}', '{}');".format(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),x.sprintf("%TCP.dport%")))
 	conn.commit()
 
 def run_sniff():
-	sniff(prn=add_ips)
+	while 1:
+		sniff(prn=add_ips,count=100)
 
 def show_ips():
-	c.execute("SELECT * FROM connexions;")
+	c.execute("SELECT ip_from, ip_to, to_port FROM connexions;")
 	a= c.fetchone()
-	print("num : IP from -> IP to")
+	print("num : IP from -> IP to : Port")
 	i=1
 	while a:
-		print("{} : {} -> {}".format(i,a[0],a[1]))
+		print("{} : {} -> {} : {}".format(i,a[0],a[1],a[2]))
 		a= c.fetchone()
 		i+=1
 
@@ -89,6 +98,18 @@ def get_ips():
 def get_nb_ips():
 	print("Nb ips : {}".format(len(get_uniques_ips())))
 
+
+def get_stat():
+	my_ip=get_my_ip()
+	c.execute("SELECT to_port, count(id) FROM connexions WHERE ip_to='{}' group by to_port order by to_port;".format(my_ip))
+	print(c.fetchall)
+	a= c.fetchone()
+	print("port : nb connection on {}".format(my_ip))
+	while a:
+		print("{} : {}".format(a[0],a[1]))
+		a= c.fetchone()
+
+
 def help():
 	print("""Need parameters :
 run : start sniffing
@@ -96,6 +117,7 @@ show : show connexions
 ip : list all IPs
 js : dump the DB into a JS file
 nbip : number of IPs
+stat : show nb connection by port
 
 Exemples :
 In Terminal 1
@@ -129,6 +151,8 @@ elif action == "nbip":
 elif action =="run":
 	from scapy.all import *
 	run_sniff()
+elif action == "stat":
+	get_stat()	
 else:
 	print("What?")
 	help()
