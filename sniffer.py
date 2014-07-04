@@ -79,6 +79,12 @@ def gen_links():
 		f.write("var nb_ips="+unicode(str(len(nodes)))+";")
 		f.write("var elements="+unicode(json.dumps(elements, ensure_ascii=False))+";")
 
+def get_ips():
+	i=0;
+	for ip in get_uniques_ips():
+		i+=1
+		print("{} : {}".format(i,ip))
+	print("\nNb ips : {}".format(i))
 
 def get_nb_ips():
 	print("Nb ips : {}".format(len(get_uniques_ips())))
