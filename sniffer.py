@@ -14,9 +14,9 @@
 import sys
 from pyspatialite import dbapi2 as sqlite3
 import socket
-import os.path
+import os
 
-conn = sqlite3.connect('ips.db')
+conn = sqlite3.connect('ips.db',15)
 c = conn.cursor()
 c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, proto varchar(8) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port,proto));")
 conn.commit()
@@ -43,7 +43,7 @@ def add_ips(x):
 	c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to, to_port, proto) VALUES (?, ?, ?, ?);",(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
 	conn.commit()
 
-def run_sniff():
+def start_sniff():
 	while 1:
 		sniff(prn=add_ips,count=100)
 
@@ -138,7 +138,8 @@ def get_stat():
 
 def help():
 	print("""Need parameters :
-run : start sniffing
+start : start sniffing (need root)
+stop : stop sniffing (need root)
 show : show connexions
 ip : list all IPs
 js : dump the DB into a JS file
@@ -146,16 +147,18 @@ nbip : number of IPs
 stat : show nb connection by port
 
 Exemples :
-In Terminal 1
-sudo ./sniffer.py run
+sudo ./sniffer.py start >/dev/null &
 #sniff all IPs on the network
 
-In Terminal 2
 ./sniffer.py show
 192.168.0.42 -> 192.168.0.1
 192.168.0.1 <- 192.168.0.42
 192.168.0.42 -> 192.168.0.64
-...""")
+...
+
+sudo ./sniffer.py stop
+
+""")
 
 if len(sys.argv) < 2:
     help()
@@ -174,11 +177,13 @@ elif action == "ip":
 	get_ips()
 elif action == "nbip":
 	get_nb_ips()
-elif action =="run":
+elif action =="start":
 	from scapy.all import *
-	run_sniff()
+	start_sniff()
 elif action == "stat":
-	get_stat()	
+	get_stat()
+elif action == "stop":
+	os.system("ps -C sniffer.py -o pid=|xargs kill -15")
 else:
 	print("What?")
 	help()
