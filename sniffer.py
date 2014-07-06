@@ -14,10 +14,11 @@
 import sys
 from pyspatialite import dbapi2 as sqlite3
 import socket
+import os.path
 
 conn = sqlite3.connect('ips.db')
 c = conn.cursor()
-c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port));")
+c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, proto varchar(8) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port,proto));")
 conn.commit()
 
 def get_my_ip():
@@ -29,7 +30,17 @@ def get_my_ip():
 	return ip
 
 def add_ips(x):
-	c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to, to_port) VALUES ('{}', '{}', '{}');".format(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),x.sprintf("%TCP.dport%")))
+	proto=x.sprintf("%IP.proto%")
+	if proto == "tcp":
+		dport=x.sprintf("%TCP.dport%")
+	elif proto == "udp":
+		dport=x.sprintf("%UDP.dport%")
+	elif proto == "icmp":
+		dport='-'
+	else:
+		dport='?'
+
+	c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to, to_port, proto) VALUES (?, ?, ?, ?);",(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
 	conn.commit()
 
 def run_sniff():
@@ -37,12 +48,12 @@ def run_sniff():
 		sniff(prn=add_ips,count=100)
 
 def show_ips():
-	c.execute("SELECT ip_from, ip_to, to_port FROM connexions;")
+	c.execute("SELECT ip_from, ip_to, to_port, proto FROM connexions;")
 	a= c.fetchone()
-	print("num : IP from -> IP to : Port")
+	print("num : IP from -> IP to : Port ; proto")
 	i=1
 	while a:
-		print("{} : {} -> {} : {}".format(i,a[0],a[1],a[2]))
+		print("{} : {} -> {} : {} ; {}".format(i,a[0],a[1],a[2],a[3]))
 		a= c.fetchone()
 		i+=1
 
@@ -101,14 +112,29 @@ def get_nb_ips():
 
 def get_stat():
 	my_ip=get_my_ip()
-	c.execute("SELECT to_port, count(id) FROM connexions WHERE ip_to='{}' group by to_port order by to_port;".format(my_ip))
-	print(c.fetchall)
+	c.execute("SELECT to_port, proto, count(id) FROM connexions WHERE ip_to='{}' group by to_port,proto order by to_port;".format(my_ip))
 	a= c.fetchone()
-	print("port : nb connection on {}".format(my_ip))
+	print("port : proto : nb connection on {}".format(my_ip))
 	while a:
-		print("{} : {}".format(a[0],a[1]))
+		print("{} : {} : {}".format(a[0],a[1],a[2]))
 		a= c.fetchone()
+
+
+        c.execute("SELECT to_port, proto, count(id),ip_to FROM connexions WHERE ip_to!='{0}' and ip_from!='{0}' group by ip_to, to_port,proto order by to_port;".format(my_ip))
+        a= c.fetchone()
+	ip=''
+        while a:
+		if ip != a[3]:
+			ip=a[3]
+        		print("\n\nport : proto : nb connection on {}".format(ip))	
+                print("{} : {} : {}".format(a[0],a[1],a[2]))
+                a= c.fetchone()
+
+	print("\n")
 	get_nb_ips()
+
+
+
 
 def help():
 	print("""Need parameters :
@@ -156,3 +182,4 @@ elif action == "stat":
 else:
 	print("What?")
 	help()
+
