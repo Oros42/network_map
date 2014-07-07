@@ -148,29 +148,56 @@ def get_nb_ips():
 
 def get_stat():
 	my_ip=get_my_ip()
-	c.execute("SELECT to_port, proto, count(id) FROM connexions WHERE ip_to='{}' group by to_port,proto order by to_port;".format(my_ip))
+	c.execute("SELECT to_port, proto, count(id), ip_from FROM connexions WHERE ip_to='{}' group by to_port,proto order by to_port;".format(my_ip))
 	a= c.fetchone()
-	print("port : proto : nb connection on {}".format(my_ip))
+	print("port : proto : nb connection on {} (from IP)".format(my_ip))
 	while a:
-		print("{} : {} : {}".format(a[0],a[1],a[2]))
+		if a[2] == 1:
+			print("{} : {} : {} ({})".format(a[0],a[1],a[2],a[3]))
+		else:
+			print("{} : {} : {}".format(a[0],a[1],a[2]))
 		a= c.fetchone()
 
 
-	c.execute("SELECT to_port, proto, count(id),ip_to FROM connexions WHERE ip_to!='{0}' and ip_from!='{0}' group by ip_to, to_port,proto order by to_port;".format(my_ip))
+	c.execute("SELECT to_port, proto, count(id),ip_to, ip_from FROM connexions WHERE ip_to!='{0}' and ip_from!='{0}' group by ip_to, to_port,proto order by to_port;".format(my_ip))
 	a= c.fetchone()
 	ip=''
 	while a:
 		if ip != a[3]:
 			ip=a[3]
-			print("\n\nport : proto : nb connection on {}".format(ip))	
-		print("{} : {} : {}".format(a[0],a[1],a[2]))
+			print("\n\nport : proto : nb connection on {} (from IP)".format(ip))
+		if a[2] == 1:
+			print("{} : {} : {} ({})".format(a[0],a[1],a[2],a[4]))
+		else:
+			print("{} : {} : {}".format(a[0],a[1],a[2]))
 		a= c.fetchone()
 
 	print("\n")
 	get_nb_ips()
 
 
+def get_stat_to():
+	c.execute("SELECT ip_to, to_port, proto, ip_from  FROM connexions WHERE 1 order by to_port;")
+	a= c.fetchone()
+	ip=''
+	while a:
+		if ip != a[3]:
+			ip=a[3]
+			print("\nConnection from {}".format(ip))
+			print("IP, port, proto")
 
+		print("{} : {} : {}".format(a[0],a[1],a[2]))
+		a= c.fetchone()
+
+def get_stat_me():
+	my_ip=get_my_ip()
+	c.execute("SELECT ip_to, to_port, proto  FROM connexions WHERE ip_from='{}' group by to_port,proto order by to_port;".format(my_ip))
+	a= c.fetchone()
+	print("Connection from {}".format(my_ip))
+	print("IP, port, proto")
+	while a:
+		print("{} : {} : {}".format(a[0],a[1],a[2]))
+		a= c.fetchone()
 
 def help():
 	print("""Need parameters :
@@ -226,6 +253,10 @@ else:
 		get_nb_ips()
 	elif action == "stat":
 		get_stat()
+	elif action == "to":
+		get_stat_to()
+	elif action == "me":
+		get_stat_me()
 	else:
 		print("What?")
 		help()
