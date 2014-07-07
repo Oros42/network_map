@@ -13,20 +13,20 @@ Run
 ===
 
 1. Start sniffing :  
-```sudo ./sniffer.php start```  
+```sudo ./sniffer.py start```  
   
 2. Watch who talk to who (You can run it in an other termial during the sniffing) :  
-```./sniffer.php show```  
+```./sniffer.py show```  
   
 3. You can create a svg graph :  
-```./sniffer.php map```  
+```./sniffer.py map```  
   
 4. Or a js graph :  
-```./sniffer.php js```  
+```./sniffer.py js```  
 	and open index.html
 
 5. Stop sniffing :  
-```sudo ./sniffer.php stop```  
+```sudo ./sniffer.py stop```  
 
 Licence
 =======
