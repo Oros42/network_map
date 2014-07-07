@@ -71,9 +71,15 @@ def add_ips(x):
 		conn.commit()
 
 def start_sniff():
+	global can_sniff
+	
 	while can_sniff:
-		sniff(prn=add_ips,count=20)
-		shutil.copy('/dev/shm/ips.db','ips.db')
+		try:
+			sniff(prn=add_ips,count=20)
+			shutil.copy('/dev/shm/ips.db','ips.db')
+		except Exception:
+			can_sniff=False
+			continue
 
 	shutil.move('/dev/shm/ips.db','ips.db')
 
@@ -150,15 +156,15 @@ def get_stat():
 		a= c.fetchone()
 
 
-        c.execute("SELECT to_port, proto, count(id),ip_to FROM connexions WHERE ip_to!='{0}' and ip_from!='{0}' group by ip_to, to_port,proto order by to_port;".format(my_ip))
-        a= c.fetchone()
+	c.execute("SELECT to_port, proto, count(id),ip_to FROM connexions WHERE ip_to!='{0}' and ip_from!='{0}' group by ip_to, to_port,proto order by to_port;".format(my_ip))
+	a= c.fetchone()
 	ip=''
-        while a:
+	while a:
 		if ip != a[3]:
 			ip=a[3]
-        		print("\n\nport : proto : nb connection on {}".format(ip))	
-                print("{} : {} : {}".format(a[0],a[1],a[2]))
-                a= c.fetchone()
+			print("\n\nport : proto : nb connection on {}".format(ip))	
+		print("{} : {} : {}".format(a[0],a[1],a[2]))
+		a= c.fetchone()
 
 	print("\n")
 	get_nb_ips()
@@ -225,5 +231,3 @@ else:
 		help()
 
 conn.close()
-
-print('End')
