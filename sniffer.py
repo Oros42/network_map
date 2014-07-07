@@ -16,10 +16,14 @@ from pyspatialite import dbapi2 as sqlite3
 import socket
 import os
 
-conn = sqlite3.connect('ips.db',15)
-c = conn.cursor()
-c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, proto varchar(8) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port,proto));")
-conn.commit()
+if os.path.isfile('ips.db'):
+	conn = sqlite3.connect('ips.db',15)
+	c = conn.cursor()
+else:
+	conn = sqlite3.connect('ips.db',15)
+	c = conn.cursor()
+	c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, proto varchar(8) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port,proto));")
+	conn.commit()
 
 def get_my_ip():
 	# bof bof
