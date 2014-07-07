@@ -15,15 +15,37 @@ import sys
 from pyspatialite import dbapi2 as sqlite3
 import socket
 import os
+import shutil
 
-if os.path.isfile('ips.db'):
-	conn = sqlite3.connect('ips.db',15)
-	c = conn.cursor()
-else:
-	conn = sqlite3.connect('ips.db',15)
-	c = conn.cursor()
-	c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, proto varchar(8) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port,proto));")
-	conn.commit()
+can_sniff=True
+c=None
+conn=None
+
+def clean_exit(signum, frame):
+	global can_sniff
+	can_sniff=False
+	print('stop...')
+
+def load_db(write):
+	global c
+	global conn
+	if os.path.isfile('/dev/shm/ips.db'):
+		conn = sqlite3.connect('/dev/shm/ips.db',15)
+		c = conn.cursor()
+	else:
+		if os.path.isfile('ips.db'):
+			if write:
+				shutil.copy('ips.db','/dev/shm/ips.db')
+				conn = sqlite3.connect('/dev/shm/ips.db',15)
+			else:
+				conn = sqlite3.connect('ips.db',15)
+			c = conn.cursor()
+		else:
+			conn = sqlite3.connect('/dev/shm/ips.db',15)
+			c = conn.cursor()
+			c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, proto varchar(8) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port,proto));")
+			conn.commit()
+			shutil.copy('/dev/shm/ips.db','ips.db')
 
 def get_my_ip():
 	# bof bof
@@ -34,22 +56,26 @@ def get_my_ip():
 	return ip
 
 def add_ips(x):
-	proto=x.sprintf("%IP.proto%")
-	if proto == "tcp":
-		dport=x.sprintf("%TCP.dport%")
-	elif proto == "udp":
-		dport=x.sprintf("%UDP.dport%")
-	elif proto == "icmp":
-		dport='-'
-	else:
-		dport='?'
+	if can_sniff:
+		proto=x.sprintf("%IP.proto%")
+		if proto == "tcp":
+			dport=x.sprintf("%TCP.dport%")
+		elif proto == "udp":
+			dport=x.sprintf("%UDP.dport%")
+		elif proto == "icmp":
+			dport='-'
+		else:
+			dport='?'
 
-	c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to, to_port, proto) VALUES (?, ?, ?, ?);",(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
-	conn.commit()
+		c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to, to_port, proto) VALUES (?, ?, ?, ?);",(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
+		conn.commit()
 
 def start_sniff():
-	while 1:
-		sniff(prn=add_ips,count=100)
+	while can_sniff:
+		sniff(prn=add_ips,count=20)
+		shutil.copy('/dev/shm/ips.db','ips.db')
+
+	shutil.move('/dev/shm/ips.db','ips.db')
 
 def show_ips():
 	c.execute("SELECT ip_from, ip_to, to_port, proto FROM connexions;")
@@ -169,26 +195,35 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 action=sys.argv[1]
-if action == "show":
-	show_ips()
-elif action == "map":
-	gen_map()
-elif action == "js":
-	import json
-	import io
-	gen_links()
-elif action == "ip":
-	get_ips()
-elif action == "nbip":
-	get_nb_ips()
-elif action =="start":
-	from scapy.all import *
-	start_sniff()
-elif action == "stat":
-	get_stat()
-elif action == "stop":
-	os.system("ps -C sniffer.py -o pid=|xargs kill -15")
-else:
-	print("What?")
-	help()
 
+if action =="start":
+	from scapy.all import *
+	import signal
+	signal.signal(signal.SIGTERM, clean_exit)
+	load_db(True)
+	start_sniff()
+elif action == "stop":
+	os.system('ps -C "sniffer.py start" -o pid=|xargs kill -15')
+else:
+	load_db(False)
+	if action == "show":
+		show_ips()
+	elif action == "map":
+		gen_map()
+	elif action == "js":
+		import json
+		import io
+		gen_links()
+	elif action == "ip":
+		get_ips()
+	elif action == "nbip":
+		get_nb_ips()
+	elif action == "stat":
+		get_stat()
+	else:
+		print("What?")
+		help()
+
+conn.close()
+
+print('End')
