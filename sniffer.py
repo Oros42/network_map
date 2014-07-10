@@ -148,7 +148,7 @@ def get_nb_ips():
 
 def get_stat():
 	my_ip=get_my_ip()
-	c.execute("SELECT to_port, proto, count(id), ip_from FROM connexions WHERE ip_to='{}' group by to_port,proto order by to_port;".format(my_ip))
+	c.execute("SELECT to_port, proto, count(id), ip_from FROM connexions WHERE ip_to='{}' group by to_port,proto order by to_port ASC;".format(my_ip))
 	a= c.fetchone()
 	print("port : proto : nb connection on {} (from IP)".format(my_ip))
 	while a:
@@ -159,7 +159,7 @@ def get_stat():
 		a= c.fetchone()
 
 
-	c.execute("SELECT to_port, proto, count(id),ip_to, ip_from FROM connexions WHERE ip_to!='{0}' and ip_from!='{0}' group by ip_to, to_port,proto order by to_port;".format(my_ip))
+	c.execute("SELECT to_port, proto, count(id),ip_to, ip_from FROM connexions WHERE ip_to!='{0}' and ip_from!='{0}' group by ip_to, to_port,proto order by to_port ASC;".format(my_ip))
 	a= c.fetchone()
 	ip=''
 	while a:
@@ -177,7 +177,7 @@ def get_stat():
 
 
 def get_stat_to():
-	c.execute("SELECT ip_to, to_port, proto, ip_from  FROM connexions WHERE 1 order by to_port;")
+	c.execute("SELECT ip_to, to_port, proto, ip_from  FROM connexions WHERE 1 order by to_port ASC;")
 	a= c.fetchone()
 	ip=''
 	while a:
@@ -191,13 +191,24 @@ def get_stat_to():
 
 def get_stat_me():
 	my_ip=get_my_ip()
-	c.execute("SELECT ip_to, to_port, proto  FROM connexions WHERE ip_from='{}' group by to_port,proto order by to_port;".format(my_ip))
+	c.execute("SELECT ip_to, to_port, proto  FROM connexions WHERE ip_from='{}' group by to_port,proto order by to_port ASC;".format(my_ip))
 	a= c.fetchone()
 	print("Connection from {}".format(my_ip))
 	print("IP, port, proto")
 	while a:
 		print("{} : {} : {}".format(a[0],a[1],a[2]))
 		a= c.fetchone()
+
+def get_stat_me_top():
+	my_ip=get_my_ip()
+	c.execute("SELECT to_port, proto, count(ip_from)  FROM connexions WHERE ip_to='{}' group by to_port,proto order by count(ip_from) DESC LIMIT 10;".format(my_ip))
+	a= c.fetchone()
+	print("Top 10 of used port on {}".format(my_ip))
+	print("port : proto : nb IP")
+	while a:
+		print("{} : {} : {}".format(a[0],a[1],a[2]))
+		a= c.fetchone()
+
 
 def help():
 	print("""Need parameters :
@@ -257,6 +268,8 @@ else:
 		get_stat_to()
 	elif action == "me":
 		get_stat_me()
+	elif action == "top":
+		get_stat_me_top()
 	else:
 		print("What?")
 		help()
