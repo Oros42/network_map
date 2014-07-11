@@ -241,7 +241,7 @@ if len(sys.argv) < 2:
 action=sys.argv[1]
 
 if action =="start":
-	from scapy.all import *
+	from scapy.all import sniff
 	import signal
 	signal.signal(signal.SIGTERM, clean_exit)
 	load_db(True)
@@ -253,7 +253,7 @@ else:
 	if action == "show":
 		show_ips()
 	elif action == "map":
-		from scapy.all import *
+		from scapy.all import traceroute
 		gen_map()
 	elif action == "js":
 		import json
