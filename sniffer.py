@@ -253,6 +253,7 @@ else:
 	if action == "show":
 		show_ips()
 	elif action == "map":
+		from scapy.all import *
 		gen_map()
 	elif action == "js":
 		import json
