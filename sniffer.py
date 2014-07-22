@@ -101,7 +101,7 @@ def start_sniff():
 			can_sniff=False
 			continue
 
-	shutil.move('/dev/shm/ips.db','ips.db')
+	close_db()
 
 def show_ips():
 	c.execute("SELECT ip_from, ip_to, to_port, proto FROM connexions;")
@@ -278,7 +278,7 @@ def geoip_():
 	print("Total IP {}".format(a[0]))
 
 def geoip(to_port):
-	c.execute("SELECT country_code, country_name, count(ip) FROM ips, connexions WHERE ip=ip_from and to_port={} group by country_code, country_name order by count(ip) DESC;".format(to_port))
+	c.execute("SELECT country_code, country_name, count(ip) FROM ips, connexions WHERE ip=ip_from and to_port='{}' group by country_code, country_name order by count(ip) DESC;".format(to_port))
 	print("country rank on {}".format(to_port))
 	print("rank : country_code : country_name : nb IP")
 	a= c.fetchall()
@@ -353,10 +353,9 @@ else:
 		if len(sys.argv) < 3:
 			print("Need port !")
 			print("sniffer.py geo <port>")
-			sys.exit(1)
-
-		import GeoIP
-		geoip(sys.argv[2])
+		else:
+			import GeoIP
+			geoip(sys.argv[2])
 	elif action == "geoip_init":
 		import GeoIP
 		geoip_init()
@@ -365,4 +364,3 @@ else:
 		help()
 	close_db()
 
-conn.close()
