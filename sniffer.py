@@ -57,6 +57,7 @@ def load_db(write):
 			c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, proto varchar(8) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port,proto));")
 			conn.commit()
 			shutil.copy('/dev/shm/ips.db','ips.db')
+	conn.text_factory = str
 
 def close_db():
 	conn.close()
@@ -246,7 +247,6 @@ def geoip_init():
 													 longitude TEXT DEFAULT NULL,
 													 UNIQUE(ip));""")
 	conn.commit()
-	conn.text_factory = str
 
 	for ip in get_uniques_ips():
 		info=geo.record_by_addr(ip)
@@ -277,17 +277,16 @@ def geoip_():
 	a= c.fetchone()
 	print("Total IP {}".format(a[0]))
 
-def geoip():
-	c.execute("SELECT country_code, country_name, count(ip) FROM ips, connexions WHERE ip=ip_from and to_port=58677 group by country_code, country_name order by count(ip) DESC;")
-	a= c.fetchone()
-	print("country_code : country_name : nb IP")
-	while a:
-		print("{} : {} : {}".format(a[0],a[1],a[2]))
-		a= c.fetchone()
-
-	c.execute("SELECT count(ip) FROM ips, connexions WHERE ip=ip_from and to_port=58677;")
-	a= c.fetchone()
-	print("Total IP {}".format(a[0]))
+def geoip(to_port):
+	c.execute("SELECT country_code, country_name, count(ip) FROM ips, connexions WHERE ip=ip_from and to_port={} group by country_code, country_name order by count(ip) DESC;".format(to_port))
+	print("country rank on {}".format(to_port))
+	print("rank : country_code : country_name : nb IP")
+	a= c.fetchall()
+	i = 1
+	for ip in a:
+		print("{} : {} : {} : {}".format(str(i), ip[0],ip[1],ip[2]))
+		i +=1
+	print("Total IP {}".format(len(a)))
 
 
 def help():
@@ -315,8 +314,8 @@ sudo ./sniffer.py stop
 """)
 
 if len(sys.argv) < 2:
-    help()
-    sys.exit(1)
+	help()
+	sys.exit(1)
 
 action=sys.argv[1]
 
@@ -351,8 +350,13 @@ else:
 	elif action == "top":
 		get_stat_me_top()
 	elif action == "geo":
+		if len(sys.argv) < 3:
+			print("Need port !")
+			print("sniffer.py geo <port>")
+			sys.exit(1)
+
 		import GeoIP
-		geoip()
+		geoip(sys.argv[2])
 	elif action == "geoip_init":
 		import GeoIP
 		geoip_init()
