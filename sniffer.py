@@ -286,10 +286,12 @@ def geoip(to_port=None):
 	print("rank : country_code : country_name : nb IP")
 	a= c.fetchall()
 	i = 1
+	total=0
 	for ip in a:
 		print("{} : {} : {} : {}".format(str(i), ip[0],ip[1],ip[2]))
 		i +=1
-	print("Total IP {}".format(len(a)))
+		total+=ip[2]
+	print("Total IP {}".format(total))
 
 
 def help():
