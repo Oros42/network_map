@@ -30,6 +30,7 @@ import shutil
 can_sniff=True
 c=None
 conn=None
+last_insert_ips=[]
 
 def clean_exit(signum, frame):
 	global can_sniff
@@ -57,6 +58,11 @@ def load_db(write):
 			conn.commit()
 			shutil.copy('/dev/shm/ips.db','ips.db')
 
+def close_db():
+	conn.close()
+	if os.path.isfile('/dev/shm/ips.db'):
+		shutil.copy('/dev/shm/ips.db','ips.db')
+
 def get_my_ip():
 	# bof bof
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -76,9 +82,12 @@ def add_ips(x):
 			dport='-'
 		else:
 			dport='?'
-
-		c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to, to_port, proto) VALUES (?, ?, ?, ?);",(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
-		conn.commit()
+		if not (x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto) in last_insert_ips:
+			c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to, to_port, proto) VALUES (?, ?, ?, ?);",(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
+			conn.commit()
+			last_insert_ips.append((x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
+			if last_insert_ips > 10:
+				last_insert_ips.pop(0)
 
 def start_sniff():
 	global can_sniff
@@ -240,7 +249,7 @@ def geoip_init():
 	conn.text_factory = str
 
 	for ip in get_uniques_ips():
-		info=geo.record_by_addr(ip[0])
+		info=geo.record_by_addr(ip)
 		if info:
 			if info['country_code']:
 				info['country_code'] = str(info['country_code'])
@@ -350,5 +359,6 @@ else:
 	else:
 		print("What?")
 		help()
+	close_db()
 
 conn.close()
