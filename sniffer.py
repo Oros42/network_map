@@ -341,6 +341,9 @@ else:
 	elif action == "geo":
 		import GeoIP
 		geoip()
+	elif action == "geoip_init"
+		import GeoIP
+		geoip_init()
 	else:
 		print("What?")
 		help()
