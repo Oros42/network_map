@@ -87,7 +87,7 @@ def add_ips(x):
 			c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to, to_port, proto) VALUES (?, ?, ?, ?);",(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
 			conn.commit()
 			last_insert_ips.append((x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
-			if last_insert_ips > 10:
+			if last_insert_ips > 50:
 				last_insert_ips.pop(0)
 
 def start_sniff():
@@ -277,9 +277,12 @@ def geoip_():
 	a= c.fetchone()
 	print("Total IP {}".format(a[0]))
 
-def geoip(to_port):
-	c.execute("SELECT country_code, country_name, count(ip) FROM ips, connexions WHERE ip=ip_from and to_port='{}' group by country_code, country_name order by count(ip) DESC;".format(to_port))
-	print("country rank on {}".format(to_port))
+def geoip(to_port=None):
+	if to_port:
+		c.execute("SELECT country_code, country_name, count(ip) FROM ips, connexions WHERE ip=ip_from and to_port='{}' group by country_code, country_name order by count(ip) DESC;".format(to_port))
+		print("country rank on port : {}".format(to_port))
+	else:
+		c.execute("SELECT country_code, country_name, count(ip) FROM ips group by country_code, country_name order by count(ip) DESC;")
 	print("rank : country_code : country_name : nb IP")
 	a= c.fetchall()
 	i = 1
@@ -298,6 +301,11 @@ ip : list all IPs
 js : dump the DB into a JS file
 nbip : number of IPs
 stat : show nb connection by port
+to : show who was connect to who
+me : show connection from me
+top : top 10 of used port
+geoip_init : initialiase ips table with ip's location
+geo [port] : rank of country
 
 Exemples :
 sudo ./sniffer.py start >/dev/null &
@@ -350,11 +358,10 @@ else:
 	elif action == "top":
 		get_stat_me_top()
 	elif action == "geo":
+		import GeoIP
 		if len(sys.argv) < 3:
-			print("Need port !")
-			print("sniffer.py geo <port>")
+			geoip()
 		else:
-			import GeoIP
 			geoip(sys.argv[2])
 	elif action == "geoip_init":
 		import GeoIP
@@ -363,4 +370,3 @@ else:
 		print("What?")
 		help()
 	close_db()
-
