@@ -105,7 +105,10 @@ def show_ips():
 
 def get_uniques_ips():
 	c.execute("SELECT ip_from FROM connexions WHERE ip_from!= '??' GROUP BY ip_from UNION SELECT ip_to FROM connexions WHERE ip_to!= '??' GROUP BY ip_to;")
-	return c.fetchall()
+	ips=[]
+	for i in c.fetchall():
+		ips.append(i[0])
+	return ips
 
 def gen_map():
 	from scapy.all import traceroute
@@ -237,7 +240,7 @@ def geoip_init():
 	conn.text_factory = str
 
 	for ip in get_uniques_ips():
-		info=geo.record_by_addr(ip)
+		info=geo.record_by_addr(ip[0])
 		if info:
 			if info['country_code']:
 				info['country_code'] = str(info['country_code'])
