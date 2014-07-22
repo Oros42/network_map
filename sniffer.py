@@ -6,9 +6,19 @@
 #	 http://secdev.org/projects/scapy/doc/usage.html
 #	 http://sdz.tdct.org/sdz/manipulez-les-paquets-reseau-avec-scapy.html
 #
+# TODO :
+# intégrer whois : https://github.com/secynic/ipwhois/blob/master/ipwhois/ipwhois.py
+# https://code.google.com/p/pygeoip/wiki/Usage
+# /usr/share/GeoIP/GeoIP.dat
+# /usr/share/GeoIP/GeoIPv6.dat
+#
 # Install :
-# apt-get install tcpdump graphviz imagemagick python-gnuplot python-crypto python-pyx python-scapy nmap
-# apt-get install python-pyspatialite
+# apt-get install tcpdump graphviz imagemagick python-gnuplot python-crypto python-pyx python-scapy nmap python-pyspatialite python-geoip
+#
+# apt-get install dvips
+# or
+# apt-get install dvi2ps
+#
 # sudo ./sniffer.py
 #
 import sys
@@ -94,23 +104,11 @@ def show_ips():
 		i+=1
 
 def get_uniques_ips():
-	c.execute("SELECT ip_from FROM connexions GROUP BY ip_from;")
-	a= c.fetchone()
-	ips=[]
-	while a:
-		if a[0] not in ips and a[0] != "??":
-			ips.append(a[0])
-		a= c.fetchone()
-
-	c.execute("SELECT ip_to FROM connexions WHERE ip_to NOT IN ('{}') GROUP BY ip_to;".format("','".join(ips)))
-	a= c.fetchone()
-	while a:
-		if a[0] not in ips and a[0] != "??":
-			ips.append(a[0])
-		a= c.fetchone()
-	return ips
+	c.execute("SELECT ip_from FROM connexions WHERE ip_from!= '??' GROUP BY ip_from UNION SELECT ip_to FROM connexions WHERE ip_to!= '??' GROUP BY ip_to;")
+	return c.fetchall()
 
 def gen_map():
+	from scapy.all import traceroute
 	res,unans = traceroute(get_uniques_ips(),dport=[80,443],maxttl=20,retry=-2)
 	res.graph() 
 	res.graph(type="ps",target="| lp")
@@ -209,6 +207,76 @@ def get_stat_me_top():
 		print("{} : {} : {}".format(a[0],a[1],a[2]))
 		a= c.fetchone()
 
+def geoip_init():
+	if not os.path.isfile('GeoLiteCity.dat'):
+		print("GeoLiteCity.dat Not found !\nStart downloading http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz")
+		import urllib, gzip
+		glcgz = open("GeoLiteCity.dat.gz",'wb')
+		glcgz.write(urllib.urlopen("http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz").read(20000000))
+		glcgz.close()
+		glcgz = gzip.open("GeoLiteCity.dat.gz",'rb')
+		glc = open("GeoLiteCity.dat",'wb')
+		glc.write(glcgz.read())
+		glcgz.close()
+		glc.close()
+
+	# http://www.go4expert.com/articles/using-geoip-python-t28612/
+	#geo = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE | GeoIP.GEOIP_CHECK_CACHE)
+	geo = GeoIP.open("GeoLiteCity.dat",GeoIP.GEOIP_MEMORY_CACHE | GeoIP.GEOIP_CHECK_CACHE)
+	c.execute("""CREATE TABLE if not exists ips (  id INTEGER PRIMARY KEY AUTOINCREMENT,
+													 ip varchar(30),
+													 country_code varchar(6) DEFAULT NULL,
+													 country_name TEXT DEFAULT NULL,
+													 region_name TEXT DEFAULT NULL,
+													 city TEXT DEFAULT NULL,
+													 postal_code TEXT DEFAULT NULL,
+													 latitude TEXT DEFAULT NULL,
+													 longitude TEXT DEFAULT NULL,
+													 UNIQUE(ip));""")
+	conn.commit()
+	conn.text_factory = str
+
+	for ip in get_uniques_ips():
+		info=geo.record_by_addr(ip)
+		if info:
+			if info['country_code']:
+				info['country_code'] = str(info['country_code'])
+			if info['country_name']:
+				info['country_name'] = str(info['country_name'])
+			if info['region_name']:
+				info['region_name'] = str(info['region_name'])
+			if info['city']:
+				info['city'] = str(info['city'])
+
+			#print(ip, info['country_code'], info['country_name'], info['region_name'], info['city'], info['postal_code'], info['latitude'], info['longitude'])
+			c.execute("""INSERT OR IGNORE INTO ips ( ip, country_code, country_name, region_name, city, postal_code, latitude, longitude ) 
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?);""",(ip, info['country_code'], info['country_name'], info['region_name'], info['city'], info['postal_code'], info['latitude'], info['longitude']))
+			conn.commit()
+
+def geoip_():
+	c.execute("SELECT country_code, country_name, count(ip) FROM ips group by country_code, country_name order by count(ip) DESC;")
+	a= c.fetchone()
+	print("country_code : country_name : nb IP")
+	while a:
+		print("{} : {} : {}".format(a[0],a[1],a[2]))
+		a= c.fetchone()
+
+	c.execute("SELECT count(ip) FROM ips;")
+	a= c.fetchone()
+	print("Total IP {}".format(a[0]))
+
+def geoip():
+	c.execute("SELECT country_code, country_name, count(ip) FROM ips, connexions WHERE ip=ip_from and to_port=58677 group by country_code, country_name order by count(ip) DESC;")
+	a= c.fetchone()
+	print("country_code : country_name : nb IP")
+	while a:
+		print("{} : {} : {}".format(a[0],a[1],a[2]))
+		a= c.fetchone()
+
+	c.execute("SELECT count(ip) FROM ips, connexions WHERE ip=ip_from and to_port=58677;")
+	a= c.fetchone()
+	print("Total IP {}".format(a[0]))
+
 
 def help():
 	print("""Need parameters :
@@ -253,7 +321,6 @@ else:
 	if action == "show":
 		show_ips()
 	elif action == "map":
-		from scapy.all import traceroute
 		gen_map()
 	elif action == "js":
 		import json
@@ -271,6 +338,9 @@ else:
 		get_stat_me()
 	elif action == "top":
 		get_stat_me_top()
+	elif action == "geo":
+		import GeoIP
+		geoip()
 	else:
 		print("What?")
 		help()
