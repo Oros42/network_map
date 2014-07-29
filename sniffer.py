@@ -291,6 +291,7 @@ def geoip(to_port=None):
 	print("Total IP {}".format(total))
 
 def geoip_map():
+	#geoip_init()
 	import BaseHTTPServer, mimetypes, urllib, re
 	class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		def not_found(self):

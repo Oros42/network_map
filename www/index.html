@@ -47,6 +47,7 @@
 						nb_ips+=positions[i][5];
 					}
 					document.getElementById('infos').innerHTML=nb_c+' position'+(nb_c>1?'s':'')+', '+nb_ips+" IP"+(nb_ips>1?'s':'');
+					document.getElementById('code').value=code;
 				}
 			};
 			xhr.send();
@@ -57,7 +58,7 @@
 			var nb_c=country_codes.length;
 			var nb_ips=0;
 			for( var i=0; i<nb_c; i++){
-				L.marker([country_codes[i][3], country_codes[i][4]]).addTo(map).bindPopup(country_codes[i][0]+" ("+country_codes[i][1]+")<br>IPs : "+country_codes[i][2]).openPopup();
+				L.marker([country_codes[i][3], country_codes[i][4]]).addTo(map).bindPopup(country_codes[i][0]+" ("+country_codes[i][1]+")<br><a href=\"#\" onclick=\"show_contry(\'"+country_codes[i][0]+"\'); return false;\">IP"+(nb_c>1?'s':'')+" : "+country_codes[i][2]+'</a>').openPopup();
 				nb_ips+=country_codes[i][2];
 			}
 			document.getElementById('infos').innerHTML=nb_c+' position'+(nb_c>1?'s':'')+', '+nb_ips+" IP"+(nb_ips>1?'s':'');
@@ -71,7 +72,8 @@
 		}
 
 		code_select.onchange=function(){
-			var v=this.options[this.selectedIndex].value;
+			//var v=this.options[this.selectedIndex].value;
+			var v=this.value;
 			if(v==''){
 				show_all_contries();
 			}else{
