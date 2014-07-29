@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Map</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="leaflet.css" />
+</head>
+<body>
+	<div id="map" style="position: fixed;bottom: 0px;top: 0px;left: 0px; right: 0px;"></div>
+	<div style="position: absolute; top: 10px; left: 50px; z-index:100;background: none repeat scroll 0 0 rgba(200, 200, 200, 0.6); border-radius: 7px; padding: 5px; ">
+		<select id="code"><option value="" selected="selected"></option></select>
+		<div id='infos'><br></div>
+	</div>
+	<!-- http://leafletjs.com/ -->
+	<script src="leaflet.js"></script>
+	<script src="codes"></script>
+	<script>
+		var map='';
+		function init_map(){
+			if(map!=''){
+				map.remove();
+			}
+			map = L.map('map').setView([0, 0], 3);
+
+			L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
+				maxZoom: 18,
+				attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+					'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+					'Imagery © <a href="http://mapbox.com">Mapbox</a>',
+				id: 'examples.map-i86knfo3'
+			}).addTo(map);
+		}
+
+		function show_contry(code){
+			document.getElementById('infos').innerHTML='Loading...';
+			var xhr = new XMLHttpRequest();
+			xhr.open('GET', 'data/'+code);
+			xhr.onreadystatechange = function(){
+				if(xhr.readyState == 4){
+					init_map();
+					positions=JSON.parse(xhr.responseText);
+					var nb_ips=0;
+					var nb_c=positions.length;
+					for( var i=0; i<nb_c; i++){
+						L.marker([positions[i][1], positions[i][2]]).addTo(map).bindPopup(positions[i][0]+" : "+positions[i][3]+"<br>"+positions[i][4]+"<br>IPs : "+positions[i][5]).openPopup();
+						nb_ips+=positions[i][5];
+					}
+					document.getElementById('infos').innerHTML=nb_c+' position'+(nb_c>1?'s':'')+', '+nb_ips+" IP"+(nb_ips>1?'s':'');
+				}
+			};
+			xhr.send();
+		}
+
+		function show_all_contries(){
+			init_map();
+			var nb_c=country_codes.length;
+			var nb_ips=0;
+			for( var i=0; i<nb_c; i++){
+				L.marker([country_codes[i][3], country_codes[i][4]]).addTo(map).bindPopup(country_codes[i][0]+" ("+country_codes[i][1]+")<br>IPs : "+country_codes[i][2]).openPopup();
+				nb_ips+=country_codes[i][2];
+			}
+			document.getElementById('infos').innerHTML=nb_c+' position'+(nb_c>1?'s':'')+', '+nb_ips+" IP"+(nb_ips>1?'s':'');
+		}
+
+		var code_select = document.getElementById('code');
+		var nb_c = country_codes.length;
+		var nb_ips=0;
+		for(var i=0; i<nb_c;i++){
+			code_select.add(new Option(country_codes[i][0]+' ('+country_codes[i][1]+') : '+country_codes[i][2]+' IP'+(country_codes[i][2]>1?'s':'') , country_codes[i][0]), null);
+		}
+
+		code_select.onchange=function(){
+			var v=this.options[this.selectedIndex].value;
+			if(v==''){
+				show_all_contries();
+			}else{
+				show_contry(v);
+			}
+		};
+		document.getElementById('infos').innerHTML =nb_ips+" IP"+(nb_ips>1?'s':'');
+		show_all_contries();
+		//show_contry(country_codes[1][0]);
+	</script>
+</body>
+</html>

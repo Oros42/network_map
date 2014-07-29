@@ -1,16 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # Author : Oros
+# License : CC0 1.0 Universal
 #
 # documentations :
 #	 http://secdev.org/projects/scapy/doc/usage.html
 #	 http://sdz.tdct.org/sdz/manipulez-les-paquets-reseau-avec-scapy.html
 #
-# TODO :
-# intégrer whois : https://github.com/secynic/ipwhois/blob/master/ipwhois/ipwhois.py
-# https://code.google.com/p/pygeoip/wiki/Usage
-# /usr/share/GeoIP/GeoIP.dat
-# /usr/share/GeoIP/GeoIPv6.dat
 #
 # Install :
 # apt-get install tcpdump graphviz imagemagick python-gnuplot python-crypto python-pyx python-scapy nmap python-pyspatialite python-geoip
@@ -232,6 +228,7 @@ def geoip_init():
 		glc.write(glcgz.read())
 		glcgz.close()
 		glc.close()
+		os.remove("GeoLiteCity.dat.gz")
 
 	# http://www.go4expert.com/articles/using-geoip-python-t28612/
 	#geo = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE | GeoIP.GEOIP_CHECK_CACHE)
@@ -292,6 +289,66 @@ def geoip(to_port=None):
 		i +=1
 		total+=ip[2]
 	print("Total IP {}".format(total))
+
+def geoip_map():
+	import BaseHTTPServer, mimetypes, urllib, re
+	class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+		def not_found(self):
+			self.send_response(404)
+			self.send_header('Content-type','text/html')
+			self.end_headers()
+			self.wfile.write("Nop")
+
+		def do_GET(self):
+			content=''
+			if self.path==u"/":
+				self.send_response(200)
+				self.send_header('Content-type','text/html')
+				self.end_headers()
+				self.wfile.write(open("./www/index.html","r").read())
+			elif self.path in [u"/leaflet.css",u"/leaflet.js",u"/index.html",u"/images/marker-icon.png",u"/images/marker-shadow.png"]:
+				localpath = urllib.unquote(self.path).decode("utf-8").replace(u"/",os.path.sep)[1:].replace(u"..",u".")
+				if os.path.isfile("./www/"+localpath):
+					ext = os.path.splitext("./www/"+localpath)[1].lower()
+					mimetype = mimetypes.types_map[ext]
+					self.send_response(200)
+					self.send_header(u'Content-Type',mimetype)
+					self.send_header(u'Content-Length',unicode(os.path.getsize("./www/"+localpath)))
+					self.end_headers()
+					self.wfile.write(open("./www/"+localpath,"rb").read())
+				else:
+					not_found(self)
+			elif self.path[0:6]==u"/codes":
+				# FIXME latitude, longitude wrong
+				c.execute("SELECT country_code, country_name, count(ip), latitude, longitude FROM ips GROUP BY country_code order by country_code ASC, city ASC;")
+				self.send_response(200)
+				self.send_header('Content-type','application/javascript')
+				self.end_headers()
+				content="country_codes=["
+				for country in c.fetchall():
+					content+="[\"{}\",\"{}\", {}, {}, {}],\n".format(country[0],country[1],country[2],country[3],country[4])
+				self.wfile.write(content[0:-1]+"];");
+			elif self.path[0:6]==u"/data/":
+				code=self.path[6:8]
+				regex = re.compile("([A-Z0-9][A-Z0-9])")
+				if regex.search(self.path[6:8]):
+					self.send_response(200)
+					self.send_header('Content-type','application/javascript')
+					self.end_headers()
+					content="[\n"
+					c.execute("SELECT country_code, latitude, longitude, country_name, city, count(ip) FROM ips where country_code='{}' group by city order by count(ip) DESC, city ASC;".format(code))
+					for ip in c.fetchall():
+						content+="[\"{}\",{},{},\"{}\",\"{}\",{}],\n".format(ip[0],ip[1],ip[2],ip[3],ip[4],ip[5])
+					self.wfile.write(content[0:-2]+"\n]");
+				else:
+					not_found(self)
+			else:
+				not_found(self)
+			return
+
+	print "Listening on port 127.0.0.1:8088..."
+	server = BaseHTTPServer.HTTPServer(('127.0.0.1', 8088), MyHandler)
+	server.serve_forever()
 
 
 def help():
@@ -368,6 +425,9 @@ else:
 	elif action == "geoip_init":
 		import GeoIP
 		geoip_init()
+	elif action == "map2":
+		import GeoIP
+		geoip_map()
 	else:
 		print("What?")
 		help()
