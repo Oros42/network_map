@@ -362,7 +362,7 @@ def geoip_map():
 			content=''
 			if self.path==u"/":
 				self.send_response(200)
-				self.send_header('Content-type','tgeoip/html')
+				self.send_header('Content-type','text/html')
 				self.end_headers()
 				self.wfile.write(open("./www/index.html","r").read())
 			elif self.path in [u"/leaflet.css",u"/leaflet.js",u"/index.html",u"/images/marker-icon.png",u"/images/marker-shadow.png"]:
