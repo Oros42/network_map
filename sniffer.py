@@ -26,7 +26,11 @@ import shutil
 can_sniff=True
 c=None
 conn=None
+last_insert_connexions=[]
 last_insert_ips=[]
+geo=None
+nb_ip_added=0
+
 
 def clean_exit(signum, frame):
 	global can_sniff
@@ -51,9 +55,32 @@ def load_db(write):
 			conn = sqlite3.connect('/dev/shm/ips.db',15)
 			c = conn.cursor()
 			c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, proto varchar(8) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port,proto));")
+			c.execute("""CREATE TABLE if not exists ips (  id INTEGER PRIMARY KEY AUTOINCREMENT,
+													 ip varchar(30),
+													 country_code varchar(6) DEFAULT NULL,
+													 country_name TEXT DEFAULT NULL,
+													 region_name TEXT DEFAULT NULL,
+													 city TEXT DEFAULT NULL,
+													 postal_code TEXT DEFAULT NULL,
+													 latitude TEXT DEFAULT NULL,
+													 longitude TEXT DEFAULT NULL,
+													 UNIQUE(ip));""")
 			conn.commit()
 			shutil.copy('/dev/shm/ips.db','ips.db')
 	conn.text_factory = str
+
+	if not os.path.isfile('GeoLiteCity.dat'):
+		print("GeoLiteCity.dat Not found !\nStart downloading http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz")
+		import urllib, gzip
+		glcgz = open("GeoLiteCity.dat.gz",'wb')
+		glcgz.write(urllib.urlopen("http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz").read(20000000))
+		glcgz.close()
+		glcgz = gzip.open("GeoLiteCity.dat.gz",'rb')
+		glc = open("GeoLiteCity.dat",'wb')
+		glc.write(glcgz.read())
+		glcgz.close()
+		glc.close()
+		os.remove("GeoLiteCity.dat.gz")
 
 def close_db():
 	conn.close()
@@ -69,6 +96,7 @@ def get_my_ip():
 	return ip
 
 def add_ips(x):
+	global nb_ip_added
 	if can_sniff:
 		proto=x.sprintf("%IP.proto%")
 		if proto == "tcp":
@@ -79,25 +107,56 @@ def add_ips(x):
 			dport='-'
 		else:
 			dport='?'
-		if not (x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto) in last_insert_ips:
+		if not (x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto) in last_insert_connexions:
 			c.execute("INSERT OR IGNORE INTO connexions ( ip_from, ip_to, to_port, proto) VALUES (?, ?, ?, ?);",(x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
 			conn.commit()
-			last_insert_ips.append((x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
-			if last_insert_ips > 50:
-				last_insert_ips.pop(0)
+			last_insert_connexions.append((x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
+			if last_insert_connexions > 100:
+				last_insert_connexions.pop(0)
+
+			for ip in [x.sprintf("%IP.src%"), x.sprintf("%IP.dst%")]:
+				if not ip in last_insert_ips:
+					info=geo.record_by_addr(ip)
+					if info:
+						if info['country_code']:
+							info['country_code'] = str(info['country_code'])
+						if info['country_name']:
+							info['country_name'] = str(info['country_name'])
+						if info['region_name']:
+							info['region_name'] = str(info['region_name'])
+						if info['city']:
+							info['city'] = str(info['city'])
+
+						c.execute("""INSERT OR IGNORE INTO ips ( ip, country_code, country_name, region_name, city, postal_code, latitude, longitude ) 
+							VALUES (?, ?, ?, ?, ?, ?, ?, ?);""",(ip, info['country_code'], info['country_name'], info['region_name'], info['city'], info['postal_code'], info['latitude'], info['longitude']))
+						conn.commit()
+					last_insert_ips.append(ip)
+					if last_insert_ips > 100:
+						last_insert_ips.pop(0)
+			nb_ip_added+=1
 
 def start_sniff():
+	import GeoIP
 	global can_sniff
-	
+	global geo
+	global nb_ip_added
+	geo = GeoIP.open("GeoLiteCity.dat",GeoIP.GEOIP_MEMORY_CACHE | GeoIP.GEOIP_CHECK_CACHE)
+
 	while can_sniff:
 		try:
 			sniff(prn=add_ips,count=20)
-			shutil.copy('/dev/shm/ips.db','ips.db')
+			if nb_ip_added >50:
+				nb_ip_added=0
+				if os.path.isfile('/dev/shm/ips.db'):
+					shutil.copy('/dev/shm/ips.db','ips.db')
 		except Exception:
 			can_sniff=False
 			continue
 
-	close_db()
+	conn.close()
+	if os.path.isfile('/dev/shm/ips.db'):
+		shutil.copy('/dev/shm/ips.db','ips.db')
+		os.remove('/dev/shm/ips.db')
 
 def show_ips():
 	c.execute("SELECT ip_from, ip_to, to_port, proto FROM connexions;")
@@ -298,7 +357,7 @@ def geoip_map():
 			self.send_response(404)
 			self.send_header('Content-type','text/html')
 			self.end_headers()
-			self.wfile.write("Nop")
+			self.wfile.write("Nope")
 
 		def do_GET(self):
 			content=''
@@ -318,7 +377,7 @@ def geoip_map():
 					self.end_headers()
 					self.wfile.write(open("./www/"+localpath,"rb").read())
 				else:
-					not_found(self)
+					self.not_found()
 			elif self.path[0:6]==u"/codes":
 				# FIXME latitude, longitude wrong
 				c.execute("SELECT country_code, country_name, count(ip), latitude, longitude FROM ips GROUP BY country_code order by country_code ASC, city ASC;")
@@ -342,9 +401,9 @@ def geoip_map():
 						content+="[\"{}\",{},{},\"{}\",\"{}\",{}],\n".format(ip[0],ip[1],ip[2],ip[3],ip[4],ip[5])
 					self.wfile.write(content[0:-2]+"\n]");
 				else:
-					not_found(self)
+					self.not_found()
 			else:
-				not_found(self)
+				self.not_found()
 			return
 
 	print "Listening on port 127.0.0.1:8088..."
