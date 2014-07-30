@@ -43,7 +43,7 @@
 					var nb_ips=0;
 					var nb_c=positions.length;
 					for( var i=0; i<nb_c; i++){
-						L.marker([positions[i][1], positions[i][2]]).addTo(map).bindPopup(positions[i][0]+" : "+positions[i][3]+"<br>"+positions[i][4]+"<br>IPs : "+positions[i][5]).openPopup();
+						L.marker([positions[i][1], positions[i][2]]).addTo(map).bindPopup(positions[i][0]+" : "+positions[i][3]+"<br>"+positions[i][4]+"<br>IPs : "+positions[i][5]);
 						nb_ips+=positions[i][5];
 					}
 					document.getElementById('infos').innerHTML=nb_c+' position'+(nb_c>1?'s':'')+', '+nb_ips+" IP"+(nb_ips>1?'s':'');
@@ -58,7 +58,7 @@
 			var nb_c=country_codes.length;
 			var nb_ips=0;
 			for( var i=0; i<nb_c; i++){
-				L.marker([country_codes[i][3], country_codes[i][4]]).addTo(map).bindPopup(country_codes[i][0]+" ("+country_codes[i][1]+")<br><a href=\"#\" onclick=\"show_contry(\'"+country_codes[i][0]+"\'); return false;\">IP"+(nb_c>1?'s':'')+" : "+country_codes[i][2]+'</a>').openPopup();
+				L.marker([country_codes[i][3], country_codes[i][4]]).addTo(map).bindPopup(country_codes[i][0]+" ("+country_codes[i][1]+")<br><a href=\"#\" onclick=\"show_contry(\'"+country_codes[i][0]+"\'); return false;\">IP"+(nb_c>1?'s':'')+" : "+country_codes[i][2]+'</a>');
 				nb_ips+=country_codes[i][2];
 			}
 			document.getElementById('infos').innerHTML=nb_c+' position'+(nb_c>1?'s':'')+', '+nb_ips+" IP"+(nb_ips>1?'s':'');

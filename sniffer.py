@@ -30,6 +30,7 @@ last_insert_connexions=[]
 last_insert_ips=[]
 geo=None
 nb_ip_added=0
+country_pos={}
 
 
 def clean_exit(signum, frame):
@@ -350,11 +351,18 @@ def geoip(to_port=None):
 	print("Total IP {}".format(total))
 
 def geoip_map():
-	import BaseHTTPServer, mimetypes, urllib, re
+	import BaseHTTPServer, mimetypes, urllib, re, csv
+	global country_pos
+	with open('geoip/country_pos.csv', 'r') as csv_file:
+		data = csv.reader(csv_file, delimiter=';', quotechar='"')
+		data.next()
+		for row in data:
+			country_pos[row[0]]=(row[1],row[2])
+
 	class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		def not_found(self):
 			self.send_response(404)
-			self.send_header('Content-type','tgeoip/html')
+			self.send_header('Content-type','text/html')
 			self.end_headers()
 			self.wfile.write("Nope")
 
@@ -378,14 +386,17 @@ def geoip_map():
 				else:
 					self.not_found()
 			elif self.path[0:6]==u"/codes":
-				# FIXME latitude, longitude wrong
-				c.execute("SELECT country_code, country_name, count(ip), latitude, longitude FROM ips GROUP BY country_code order by country_code ASC, city ASC;")
+				c.execute("SELECT country_code, country_name, count(ip) FROM ips GROUP BY country_code order by country_code ASC;")
 				self.send_response(200)
 				self.send_header('Content-type','application/javascript')
 				self.end_headers()
 				content="country_codes=["
 				for country in c.fetchall():
-					content+="[\"{}\",\"{}\", {}, {}, {}],\n".format(country[0],country[1],country[2],country[3],country[4])
+					try:
+						content+="[\"{}\",\"{}\", {}, {}, {}],\n".format(country[0],country[1],country[2],country_pos[country[0]][0],country_pos[country[0]][1])
+					except KeyError:
+						print("Not found country code : "+country[0])
+						continue
 				self.wfile.write(content[0:-1]+"];");
 			elif self.path[0:6]==u"/data/":
 				code=self.path[6:8]
