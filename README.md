@@ -7,7 +7,12 @@ network_map
 Setup
 =====
 
-```sudo apt-get install tcpdump graphviz imagemagick python-gnuplot python-crypto python-pyx python-scapy nmap python-pyspatialite```
+```sudo apt-get install tcpdump graphviz imagemagick python-gnuplot python-crypto python-pyx python-scapy nmap python-pyspatialite python-geoip```  
+  
+```sudo apt-get install dvips```  
+or  
+```sudo apt-get install dvi2ps```  
+  
 
 Run
 ===
@@ -15,22 +20,14 @@ Run
 1. Start sniffing :  
 ```sudo ./sniffer.py start```  
   
-2. Watch who talk to who (You can run it in an other termial during the sniffing) :  
-```./sniffer.py show```  
-  
-3. You can create a svg graph :  
+2. You can watch a map with positions of IPs :  
 ```./sniffer.py map```  
+Go on 127.0.0.1:8088  
   
-4. Or a js graph :  
-```./sniffer.py js```  
-	and open index.html
-
-5. Stop sniffing :  
+3. Stop sniffing :  
 ```sudo ./sniffer.py stop```  
 
 Licence
 =======
 
-cytoscape.min.js comes from https://github.com/cytoscape/cytoscape.js/  
-  
-All other files are under CC0 1.0 Universal  
+sniffer.py is under CC0 1.0 Universal  
