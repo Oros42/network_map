@@ -17,6 +17,32 @@
 	<script src="codes"></script>
 	<script>
 		var map='';
+		var icons = [];
+		for(var i=1; i<5; i++){
+			icons[i]= L.icon({
+				iconUrl: '/images/marker-icon'+i+'.png',
+				shadowUrl: '/images/marker-shadow.png',
+				iconSize: [25, 41],
+				shadowSize: [41, 41],
+				iconAnchor: [12, 41],
+				shadowAnchor: [12, 41],
+				popupAnchor: [0, -42]
+			});
+			
+		}
+
+		function get_icon(num){
+			if(num<10){
+				return 1;
+			}else if(num<100){
+				return 2;
+			}else if(num<1000){
+				return 3;
+			}else{
+				return 4;
+			}
+		}
+
 		function init_map(){
 			if(map!=''){
 				map.remove();
@@ -43,7 +69,7 @@
 					var nb_ips=0;
 					var nb_c=positions.length;
 					for( var i=0; i<nb_c; i++){
-						L.marker([positions[i][1], positions[i][2]]).addTo(map).bindPopup(positions[i][0]+" : "+positions[i][3]+"<br>"+positions[i][4]+"<br>IPs : "+positions[i][5]);
+						L.marker([positions[i][1], positions[i][2]],{icon:icons[get_icon(positions[i][5])]}).addTo(map).bindPopup(positions[i][0]+" : "+positions[i][3]+"<br>"+positions[i][4]+"<br>IPs : "+positions[i][5]);
 						nb_ips+=positions[i][5];
 					}
 					document.getElementById('infos').innerHTML=nb_c+' position'+(nb_c>1?'s':'')+', '+nb_ips+" IP"+(nb_ips>1?'s':'');
@@ -57,8 +83,10 @@
 			init_map();
 			var nb_c=country_codes.length;
 			var nb_ips=0;
+			var num_icon=0;
 			for( var i=0; i<nb_c; i++){
-				L.marker([country_codes[i][3], country_codes[i][4]]).addTo(map).bindPopup(country_codes[i][0]+" ("+country_codes[i][1]+")<br><a href=\"#\" onclick=\"show_contry(\'"+country_codes[i][0]+"\'); return false;\">IP"+(nb_c>1?'s':'')+" : "+country_codes[i][2]+'</a>');
+				
+				L.marker([country_codes[i][3], country_codes[i][4]],{icon:icons[get_icon(country_codes[i][2])]}).addTo(map).bindPopup(country_codes[i][0]+" ("+country_codes[i][1]+")<br><a href=\"#\" onclick=\"show_contry(\'"+country_codes[i][0]+"\'); return false;\">IP"+(country_codes[i][2]>1?'s':'')+" : "+country_codes[i][2]+'</a>');
 				nb_ips+=country_codes[i][2];
 			}
 			document.getElementById('infos').innerHTML=nb_c+' position'+(nb_c>1?'s':'')+', '+nb_ips+" IP"+(nb_ips>1?'s':'');

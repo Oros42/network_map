@@ -71,10 +71,12 @@ def load_db(write):
 	conn.text_factory = str
 
 	if not os.path.isfile('geoip/GeoLiteCity.dat'):
-		print("geoip/GeoLiteCity.dat Not found !\nStart downloading http://geolite.maxmind.com/download/geoip/database/geoip/GeoLiteCity.dat.gz")
+		# FIXME
+		# nouvelle base : http://dev.maxmind.com/geoip/geoip2/geolite2/
+		print("geoip/GeoLiteCity.dat Not found !\nStart downloading http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz")
 		import urllib, gzip
 		glcgz = open("geoip/GeoLiteCity.dat.gz",'wb')
-		glcgz.write(urllib.urlopen("http://geolite.maxmind.com/download/geoip/database/geoip/GeoLiteCity.dat.gz").read(20000000))
+		glcgz.write(urllib.urlopen("http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz").read(20000000))
 		glcgz.close()
 		glcgz = gzip.open("geoip/GeoLiteCity.dat.gz",'rb')
 		glc = open("geoip/GeoLiteCity.dat",'wb')
@@ -373,7 +375,7 @@ def geoip_map():
 				self.send_header('Content-type','text/html')
 				self.end_headers()
 				self.wfile.write(open("./www/index.html","r").read())
-			elif self.path in [u"/leaflet.css",u"/leaflet.js",u"/index.html",u"/images/marker-icon.png",u"/images/marker-shadow.png"]:
+			elif self.path in [u"/leaflet.css",u"/leaflet.js",u"/index.html",u"/images/marker-icon.png",u"/images/marker-icon1.png",u"/images/marker-icon2.png",u"/images/marker-icon3.png",u"/images/marker-icon4.png",u"/images/marker-shadow.png"]:
 				localpath = urllib.unquote(self.path).decode("utf-8").replace(u"/",os.path.sep)[1:].replace(u"..",u".")
 				if os.path.isfile("./www/"+localpath):
 					ext = os.path.splitext("./www/"+localpath)[1].lower()
