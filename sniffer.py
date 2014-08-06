@@ -136,8 +136,14 @@ def add_ips(x):
 					last_insert_ips.append(ip)
 					if last_insert_ips > 100:
 						last_insert_ips.pop(0)
+				else:
+					last_insert_ips.remove(ip)
+					last_insert_ips.append(ip)
 			nb_ip_added+=1
-
+		else:
+			# move top of list
+			last_insert_connexions.remove((x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
+			last_insert_connexions.append((x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
 def start_sniff():
 	import GeoIP
 	global can_sniff
