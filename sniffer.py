@@ -144,6 +144,7 @@ def add_ips(x):
 			# move top of list
 			last_insert_connexions.remove((x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
 			last_insert_connexions.append((x.sprintf("%IP.src%"),x.sprintf("%IP.dst%"),dport,proto))
+
 def start_sniff():
 	import GeoIP
 	global can_sniff
@@ -394,7 +395,7 @@ def geoip_map():
 				else:
 					self.not_found()
 			elif self.path[0:6]==u"/codes":
-				c.execute("SELECT country_code, country_name, count(ip) FROM ips GROUP BY country_code order by country_code ASC;")
+				c.execute("SELECT country_code, country_name, count(ip) FROM ips GROUP BY country_code order by count(ip) DESC, country_code ASC;")
 				self.send_response(200)
 				self.send_header('Content-type','application/javascript')
 				self.end_headers()
@@ -416,8 +417,26 @@ def geoip_map():
 					content="[\n"
 					c.execute("SELECT country_code, latitude, longitude, country_name, city, count(ip) FROM ips where country_code='{}' group by city order by count(ip) DESC, city ASC;".format(code))
 					for ip in c.fetchall():
-						content+="[\"{}\",{},{},\"{}\",\"{}\",{}],\n".format(ip[0],ip[1],ip[2],ip[3],ip[4],ip[5])
+						content+="[\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",{}],\n".format(ip[0],ip[1],ip[2],ip[3],ip[4],ip[5])
 					self.wfile.write(content[0:-2]+"\n]");
+				else:
+					self.not_found()
+			elif self.path[0:5]==u"/ips/":
+				code=self.path[5:7]
+				regex = re.compile("([A-Z0-9][A-Z0-9])")
+				if regex.search(self.path[5:7]):
+					r= re.match(r"(-?\d+\.?\d+)/(-?\d+\.?\d+)", self.path[8:])
+					if r:
+						self.send_response(200)
+						self.send_header('Content-type','application/javascript')
+						self.end_headers()
+						content="[\n"
+						c.execute("SELECT ip FROM ips where country_code='{}' and latitude='{}' and longitude='{}' order by ip ASC;".format(code,r.groups()[0],r.groups()[1]))
+						for ip in c.fetchall():
+							content+="\"{}\",\n".format(ip[0])
+						self.wfile.write(content[0:-2]+"\n]");
+					else:
+						self.not_found()
 				else:
 					self.not_found()
 			else:

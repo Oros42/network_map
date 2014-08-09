@@ -8,10 +8,11 @@
 </head>
 <body>
 	<div id="map" style="position: fixed;bottom: 0px;top: 0px;left: 0px; right: 0px;"></div>
-	<div style="position: absolute; top: 10px; left: 50px; z-index:100;background: none repeat scroll 0 0 rgba(200, 200, 200, 0.6); border-radius: 7px; padding: 5px; ">
+	<div style="position: absolute; top: 10px; left: 50px; z-index:100;background: none repeat scroll 0 0 rgba(200, 200, 200, 0.9); border-radius: 7px; padding: 5px; ">
 		<select id="code"><option value="" selected="selected"></option></select>
 		<div id='infos'><br></div>
 	</div>
+	<div id="ips" style="position: absolute; top: 80px; bottom: 10px; left: 10px; overflow-y: auto; width: 200px; z-index:100;background: none repeat scroll 0 0 rgba(200, 200, 200, 0.9); border-radius: 7px; padding: 5px; "></div>
 	<!-- http://leafletjs.com/ -->
 	<script src="leaflet.js"></script>
 	<script src="codes"></script>
@@ -58,6 +59,23 @@
 			}).addTo(map);
 		}
 
+		function show_ips(code, lat, lon){
+			var xhr = new XMLHttpRequest();
+			xhr.open('GET', 'ips/'+code+'/'+lat+'/'+lon);
+			xhr.onreadystatechange = function(){
+				if(xhr.readyState == 4){
+					ips=JSON.parse(xhr.responseText);
+					var nb_c=ips.length;
+					var h="";
+					for( var i=0; i<nb_c; i++){
+						h+=ips[i]+"<br>";
+					}
+					document.getElementById('ips').innerHTML=h;
+				}
+			};
+			xhr.send();
+		}
+
 		function show_contry(code){
 			document.getElementById('infos').innerHTML='Loading...';
 			var xhr = new XMLHttpRequest();
@@ -69,7 +87,14 @@
 					var nb_ips=0;
 					var nb_c=positions.length;
 					for( var i=0; i<nb_c; i++){
-						L.marker([positions[i][1], positions[i][2]],{icon:icons[get_icon(positions[i][5])]}).addTo(map).bindPopup(positions[i][0]+" : "+positions[i][3]+"<br>"+positions[i][4]+"<br>IPs : "+positions[i][5]);
+						L.marker([positions[i][1], positions[i][2]],{icon:icons[get_icon(positions[i][5])]})
+							.addTo(map).bindPopup(positions[i][0]+" : "+positions[i][3]
+								+"<br>"+positions[i][4]
+								+"<br>IP"+(positions[i][5]>1?'s':'')+" : "+positions[i][5]
+								+"<!-- "+positions[i][0]+"#"+positions[i][1]+"#"+positions[i][2]+"# -->").on('popupopen', function(e) {
+									var p=e.popup.getContent().substr(e.popup.getContent().indexOf('<!--')+5).split('#');
+									show_ips(p[0],p[1],p[2]);
+								});
 						nb_ips+=positions[i][5];
 					}
 					document.getElementById('infos').innerHTML=nb_c+' position'+(nb_c>1?'s':'')+', '+nb_ips+" IP"+(nb_ips>1?'s':'');
