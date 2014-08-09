@@ -15,7 +15,7 @@
 	<div id="ips" style="position: absolute; top: 80px; bottom: 10px; left: 10px; overflow-y: auto; width: 200px; z-index:100;background: none repeat scroll 0 0 rgba(200, 200, 200, 0.9); border-radius: 7px; padding: 5px; "></div>
 	<!-- http://leafletjs.com/ -->
 	<script src="leaflet.js"></script>
-	<script src="codes"></script>
+	<script src="?s=countries"></script>
 	<script>
 		var map='';
 		var icons = [];
@@ -61,7 +61,7 @@
 
 		function show_ips(code, lat, lon){
 			var xhr = new XMLHttpRequest();
-			xhr.open('GET', 'ips/'+code+'/'+lat+'/'+lon);
+			xhr.open('GET', '?s=ips&c='+code+'&lat='+lat+'&lon='+lon);
 			xhr.onreadystatechange = function(){
 				if(xhr.readyState == 4){
 					ips=JSON.parse(xhr.responseText);
@@ -79,7 +79,7 @@
 		function show_contry(code){
 			document.getElementById('infos').innerHTML='Loading...';
 			var xhr = new XMLHttpRequest();
-			xhr.open('GET', 'data/'+code);
+			xhr.open('GET', '?s=country&c='+code);
 			xhr.onreadystatechange = function(){
 				if(xhr.readyState == 4){
 					init_map();
@@ -125,7 +125,6 @@
 		}
 
 		code_select.onchange=function(){
-			//var v=this.options[this.selectedIndex].value;
 			var v=this.value;
 			if(v==''){
 				show_all_contries();
@@ -135,7 +134,6 @@
 		};
 		document.getElementById('infos').innerHTML =nb_ips+" IP"+(nb_ips>1?'s':'');
 		show_all_contries();
-		//show_contry(country_codes[1][0]);
 	</script>
 </body>
 </html>

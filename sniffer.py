@@ -360,7 +360,7 @@ def geoip(to_port=None):
 	print("Total IP {}".format(total))
 
 def geoip_map():
-	import BaseHTTPServer, mimetypes, urllib, re, csv
+	import BaseHTTPServer, mimetypes, urllib, re, csv, urlparse
 	global country_pos
 	with open('geoip/country_pos.csv', 'r') as csv_file:
 		data = csv.reader(csv_file, delimiter=';', quotechar='"')
@@ -394,53 +394,53 @@ def geoip_map():
 					self.wfile.write(open("./www/"+localpath,"rb").read())
 				else:
 					self.not_found()
-			elif self.path[0:6]==u"/codes":
-				c.execute("SELECT country_code, country_name, count(ip) FROM ips GROUP BY country_code order by count(ip) DESC, country_code ASC;")
-				self.send_response(200)
-				self.send_header('Content-type','application/javascript')
-				self.end_headers()
-				content="country_codes=["
-				for country in c.fetchall():
-					try:
-						content+="[\"{}\",\"{}\", {}, {}, {}],\n".format(country[0],country[1],country[2],country_pos[country[0]][0],country_pos[country[0]][1])
-					except KeyError:
-						print("Not found country code : "+country[0])
-						continue
-				self.wfile.write(content[0:-1]+"];");
-			elif self.path[0:6]==u"/data/":
-				code=self.path[6:8]
-				regex = re.compile("([A-Z0-9][A-Z0-9])")
-				if regex.search(self.path[6:8]):
-					self.send_response(200)
-					self.send_header('Content-type','application/javascript')
-					self.end_headers()
-					content="[\n"
-					c.execute("SELECT country_code, latitude, longitude, country_name, city, count(ip) FROM ips where country_code='{}' group by city order by count(ip) DESC, city ASC;".format(code))
-					for ip in c.fetchall():
-						content+="[\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",{}],\n".format(ip[0],ip[1],ip[2],ip[3],ip[4],ip[5])
-					self.wfile.write(content[0:-2]+"\n]");
-				else:
-					self.not_found()
-			elif self.path[0:5]==u"/ips/":
-				code=self.path[5:7]
-				regex = re.compile("([A-Z0-9][A-Z0-9])")
-				if regex.search(self.path[5:7]):
-					r= re.match(r"(-?\d+\.?\d+)/(-?\d+\.?\d+)", self.path[8:])
-					if r:
+			else:
+				query=urlparse.parse_qs(urlparse.urlparse(self.path).query)
+				if 's' in query:
+					if 'countries' in query['s']:
+						c.execute("SELECT country_code, country_name, count(ip) FROM ips GROUP BY country_code order by count(ip) DESC, country_code ASC;")
 						self.send_response(200)
 						self.send_header('Content-type','application/javascript')
 						self.end_headers()
-						content="[\n"
-						c.execute("SELECT ip FROM ips where country_code='{}' and latitude='{}' and longitude='{}' order by ip ASC;".format(code,r.groups()[0],r.groups()[1]))
-						for ip in c.fetchall():
-							content+="\"{}\",\n".format(ip[0])
-						self.wfile.write(content[0:-2]+"\n]");
-					else:
-						self.not_found()
+						content="country_codes=["
+						for country in c.fetchall():
+							try:
+								content+="[\"{}\",\"{}\", {}, {}, {}],\n".format(country[0],country[1],country[2],country_pos[country[0]][0],country_pos[country[0]][1])
+							except KeyError:
+								print("Not found country code : "+country[0])
+								continue
+						self.wfile.write(content[0:-1]+"];");
+					elif 'country' in query['s'] and 'c' in query and query['c']!=[]:
+						regex = re.compile("^([A-Z0-9][A-Z0-9])$")
+						if regex.search(query['c'][0]):
+							self.send_response(200)
+							self.send_header('Content-type','application/javascript')
+							self.end_headers()
+							content="[\n"
+							c.execute("SELECT country_code, latitude, longitude, country_name, city, count(ip) FROM ips where country_code='{}' group by city order by count(ip) DESC, city ASC;".format(query['c'][0]))
+							for ip in c.fetchall():
+								content+="[\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",{}],\n".format(ip[0],ip[1],ip[2],ip[3],ip[4],ip[5])
+							if content!="[\n":
+								self.wfile.write(content[0:-2]+"\n]");
+						else:
+							self.not_found()
+					elif 'ips' in query['s'] and 'lat' in query and 'lon' in query and 'c' in query and query['c']!=[] and query['lat']!=[] and query['lon']!=[]:
+						regex = re.compile("^([A-Z0-9][A-Z0-9])$")
+						num = re.compile("^(-?\d+\.?\d+)$")
+						if regex.search(query['c'][0]) and num.search(query['lat'][0]) and num.search(query['lon'][0]):
+							self.send_response(200)
+							self.send_header('Content-type','application/javascript')
+							self.end_headers()
+							content="[\n"
+							c.execute("SELECT ip FROM ips where country_code='{}' and latitude='{}' and longitude='{}' order by ip ASC;".format(query['c'][0], query['lat'][0], query['lon'][0]))
+							for ip in c.fetchall():
+								content+="\"{}\",\n".format(ip[0])
+							if content!="[\n":
+								self.wfile.write(content[0:-2]+"\n]");
+						else:
+							self.not_found()
 				else:
 					self.not_found()
-			else:
-				self.not_found()
 			return
 
 	print "Listening on port 127.0.0.1:8088..."
