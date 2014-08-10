@@ -260,38 +260,84 @@ def geoip_map():
 						content="country_codes=["
 						for country in c.fetchall():
 							try:
-								content+="[\"{}\",\"{}\", {}, {}, {}],\n".format(country[0],country[1],country[2],country_pos[country[0]][0],country_pos[country[0]][1])
+								content+="[\"{}\",\"{}\", {}, {}, {}],".format(country[0],country[1],country[2],country_pos[country[0]][0],country_pos[country[0]][1])
 							except KeyError:
 								print("Not found country code : "+country[0])
 								continue
-						self.wfile.write(content[0:-1]+"];");
-					elif 'country' in query['s'] and 'c' in query and query['c']!=[]:
-						regex = re.compile("^([A-Z0-9][A-Z0-9])$")
-						if regex.search(query['c'][0]):
+						self.wfile.write(content[0:-1]+"];")
+
+					elif 'port' in query['s'] and 'd' in query and query['d']!=[]:
+						if query['d'][0] =='in':
+							d='to'
+						else:
+							d='from'
+						c.execute("SELECT to_port, count(to_port) FROM connexions WHERE ip_"+d+" IN (SELECT data FROM infos WHERE key='my_ip') GROUP BY to_port ORDER BY count(to_port) DESC;")
+						content="["
+						for port in c.fetchall():
+							content+="[\"{}\",{}],".format(port[0],port[1])
+						self.send_response(200)
+						self.send_header('Content-type','application/javascript')
+						self.end_headers()
+						self.wfile.write(content[0:-1]+"]")
+
+					elif 'country' in query['s']:
+						r=[]
+						if 'c' in query and query['c']!=[]:
+							regex = re.compile("^([A-Z0-9][A-Z0-9])$")
+							if regex.search(query['c'][0]):
+								r.append("country_code='"+query['c'][0][:2]+"'")
+
+						if 'o' in query and query['o']!=[]:
+							regex = re.compile("^([a-z0-9\-_]+)$")
+							if regex.search(query['o'][0]):
+								r.append("ip IN (SELECT ip_to FROM connexions WHERE to_port='"+query['o'][0]+"' GROUP BY ip_to)")
+
+						if 'i' in query and query['i']!=[]:
+							regex = re.compile("^([a-z0-9\-_]+)$")
+							if regex.search(query['i'][0]):
+								r.append("ip IN (SELECT ip_from FROM connexions WHERE to_port='"+query['i'][0]+"' GROUP BY ip_from)")
+
+						if r!=[]:
 							self.send_response(200)
 							self.send_header('Content-type','application/javascript')
 							self.end_headers()
 							content="[\n"
-							c.execute("SELECT country_code, latitude, longitude, country_name, city, count(ip) FROM ips WHERE country_code='{}' GROUP BY city ORDER BY count(ip) DESC, city ASC;".format(query['c'][0]))
+							c.execute("SELECT country_code, latitude, longitude, country_name, city, count(ip) FROM ips WHERE "+' AND '.join(r)+" GROUP BY city ORDER BY count(ip) DESC, city ASC;")
 							for ip in c.fetchall():
 								content+="[\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",{}],\n".format(ip[0],ip[1],ip[2],ip[3],ip[4],ip[5])
 							if content!="[\n":
-								self.wfile.write(content[0:-2]+"\n]");
+								self.wfile.write(content[0:-2]+"\n]")
+							else:
+								self.wfile.write(content+"]")
 						else:
 							self.not_found()
 					elif 'ips' in query['s'] and 'lat' in query and 'lon' in query and 'c' in query and query['c']!=[] and query['lat']!=[] and query['lon']!=[]:
 						regex = re.compile("^([A-Z0-9][A-Z0-9])$")
 						num = re.compile("^(-?\d+\.?\d+)$")
 						if regex.search(query['c'][0]) and num.search(query['lat'][0]) and num.search(query['lon'][0]):
+							r="SELECT ip FROM ips WHERE country_code='{}' AND latitude='{}' AND longitude='{}'"
+							if 'o' in query and query['o']!=[]:
+								regex = re.compile("^([a-z0-9\-_]+)$")
+								if regex.search(query['o'][0]):
+									r+=" AND ip IN (SELECT ip_to FROM connexions WHERE to_port='"+query['o'][0]+"' GROUP BY ip_to)"
+
+							if 'i' in query and query['i']!=[]:
+								regex = re.compile("^([a-z0-9\-_]+)$")
+								if regex.search(query['i'][0]):
+									r+=" AND ip IN (SELECT ip_from FROM connexions WHERE to_port='"+query['i'][0]+"' GROUP BY ip_from)"
+
+							r+=" ORDER BY ip ASC;"
 							self.send_response(200)
 							self.send_header('Content-type','application/javascript')
 							self.end_headers()
+							c.execute(r.format(query['c'][0], query['lat'][0], query['lon'][0],r))
 							content="[\n"
-							c.execute("SELECT ip FROM ips WHERE country_code='{}' AND latitude='{}' AND longitude='{}' ORDER BY ip ASC;".format(query['c'][0], query['lat'][0], query['lon'][0]))
 							for ip in c.fetchall():
 								content+="\"{}\",\n".format(ip[0])
 							if content!="[\n":
-								self.wfile.write(content[0:-2]+"\n]");
+								self.wfile.write(content[0:-2]+"\n]")
+							else:
+								self.wfile.write(content+"]")
 						else:
 							self.not_found()
 				else:
