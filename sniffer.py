@@ -38,6 +38,29 @@ def clean_exit(signum, frame):
 	can_sniff=False
 	print('stop...')
 
+def init_db():
+	import commands
+	global c
+	global conn
+	c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, proto varchar(8) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port,proto));")
+	c.execute("""CREATE TABLE if not exists ips (  id INTEGER PRIMARY KEY AUTOINCREMENT,
+											 ip varchar(30),
+											 country_code varchar(6) DEFAULT NULL,
+											 country_name TEXT DEFAULT NULL,
+											 region_name TEXT DEFAULT NULL,
+											 city TEXT DEFAULT NULL,
+											 postal_code TEXT DEFAULT NULL,
+											 latitude TEXT DEFAULT NULL,
+											 longitude TEXT DEFAULT NULL,
+											 UNIQUE(ip));""")
+	c.execute("""CREATE TABLE if not exists infos (  id INTEGER PRIMARY KEY AUTOINCREMENT, key varchar(50), data TEXT DEFAULT NULL, UNIQUE(key, data));""")
+	r=commands.getoutput("/sbin/ifconfig").split('adr:')
+	i=1
+	while i < len(r):
+		c.execute("INSERT OR IGNORE INTO infos ( key, data) VALUES (?, ?);",("my_ip",r[i].split(' ')[0]))
+		i+=1
+	conn.commit()
+
 def load_db(write):
 	global c
 	global conn
@@ -55,18 +78,7 @@ def load_db(write):
 		else:
 			conn = sqlite3.connect('/dev/shm/ips.db',15)
 			c = conn.cursor()
-			c.execute("CREATE TABLE if not exists connexions (  id INTEGER PRIMARY KEY AUTOINCREMENT, ip_from varchar(30), ip_to varchar(30), to_port varchar(30) DEFAULT NULL, proto varchar(8) DEFAULT NULL, UNIQUE(ip_from,ip_to,to_port,proto));")
-			c.execute("""CREATE TABLE if not exists ips (  id INTEGER PRIMARY KEY AUTOINCREMENT,
-													 ip varchar(30),
-													 country_code varchar(6) DEFAULT NULL,
-													 country_name TEXT DEFAULT NULL,
-													 region_name TEXT DEFAULT NULL,
-													 city TEXT DEFAULT NULL,
-													 postal_code TEXT DEFAULT NULL,
-													 latitude TEXT DEFAULT NULL,
-													 longitude TEXT DEFAULT NULL,
-													 UNIQUE(ip));""")
-			conn.commit()
+			init_db()
 			shutil.copy('/dev/shm/ips.db','ips.db')
 	conn.text_factory = str
 
@@ -91,12 +103,11 @@ def close_db():
 		shutil.copy('/dev/shm/ips.db','ips.db')
 
 def get_my_ip():
-	# bof bof
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	s.connect(("gnu.org",80))
-	ip=s.getsockname()[0]
-	s.close()
-	return ip
+	c.execute("SELECT data FROM infos WHERE key='my_ip';")
+	ips=[]
+	for i in c.fetchall():
+		ips.append(i[0])
+	return ips
 
 def add_ips(x):
 	global nb_ip_added
@@ -225,7 +236,7 @@ def get_nb_ips():
 
 #def get_stat():
 #	my_ip=get_my_ip()
-#	c.execute("SELECT to_port, proto, count(id), ip_from FROM connexions WHERE ip_to='{}' group by to_port,proto order by to_port ASC;".format(my_ip))
+#	c.execute("SELECT to_port, proto, count(id), ip_from FROM connexions WHERE ip_to='{}' GROUP BY to_port,proto ORDER BY to_port ASC;".format(my_ip))
 #	a= c.fetchone()
 #	print("port : proto : nb connection on {} (from IP)".format(my_ip))
 #	while a:
@@ -235,7 +246,7 @@ def get_nb_ips():
 #			print("{} : {} : {}".format(a[0],a[1],a[2]))
 #		a= c.fetchone()
 #
-#	c.execute("SELECT to_port, proto, count(id),ip_to, ip_from FROM connexions WHERE ip_to!='{0}' and ip_from!='{0}' group by ip_to, to_port,proto order by to_port ASC;".format(my_ip))
+#	c.execute("SELECT to_port, proto, count(id),ip_to, ip_from FROM connexions WHERE ip_to!='{0}' and ip_from!='{0}' GROUP BY ip_to, to_port,proto ORDER BY to_port ASC;".format(my_ip))
 #	a= c.fetchone()
 #	ip=''
 #	while a:
@@ -253,7 +264,7 @@ def get_nb_ips():
 
 
 #def get_stat_to():
-#	c.execute("SELECT ip_to, to_port, proto, ip_from  FROM connexions WHERE 1 order by to_port ASC;")
+#	c.execute("SELECT ip_to, to_port, proto, ip_from  FROM connexions WHERE 1 ORDER BY to_port ASC;")
 #	a= c.fetchone()
 #	ip=''
 #	while a:
@@ -267,7 +278,7 @@ def get_nb_ips():
 #
 #def get_stat_me():
 #	my_ip=get_my_ip()
-#	c.execute("SELECT ip_to, to_port, proto  FROM connexions WHERE ip_from='{}' group by to_port,proto order by to_port ASC;".format(my_ip))
+#	c.execute("SELECT ip_to, to_port, proto  FROM connexions WHERE ip_from='{}' GROUP BY to_port,proto ORDER BY to_port ASC;".format(my_ip))
 #	a= c.fetchone()
 #	print("Connection from {}".format(my_ip))
 #	print("IP, port, proto")
@@ -276,13 +287,12 @@ def get_nb_ips():
 #		a= c.fetchone()
 
 def get_stat_me_top():
-	my_ip=get_my_ip()
-	c.execute("SELECT to_port, proto, count(ip_from)  FROM connexions WHERE ip_to='{}' group by to_port,proto order by count(ip_from) DESC LIMIT 10;".format(my_ip))
+	c.execute("SELECT ip_to, to_port, proto, count(ip_from)  FROM connexions WHERE ip_to IN (SELECT data FROM infos WHERE key='my_ip') GROUP BY to_port,proto ORDER BY count(ip_from) DESC LIMIT 10;")
 	a= c.fetchone()
-	print("Top 10 of used port on {}".format(my_ip))
-	print("port : proto : nb IP")
+	print("Top 10 of used port")
+	print("My IP : port : proto : nb IP")
 	while a:
-		print("{} : {} : {}".format(a[0],a[1],a[2]))
+		print("{} : {} : {} : {}".format(a[0],a[1],a[2],a[3]))
 		a= c.fetchone()
 
 #def geoip_init():
@@ -332,7 +342,7 @@ def get_stat_me_top():
 #			conn.commit()
 
 #def geoip_():
-#	c.execute("SELECT country_code, country_name, count(ip) FROM ips group by country_code, country_name order by count(ip) DESC;")
+#	c.execute("SELECT country_code, country_name, count(ip) FROM ips GROUP BY country_code, country_name ORDER BY count(ip) DESC;")
 #	a= c.fetchone()
 #	print("country_code : country_name : nb IP")
 #	while a:
@@ -345,10 +355,10 @@ def get_stat_me_top():
 
 def geoip(to_port=None):
 	if to_port:
-		c.execute("SELECT country_code, country_name, count(ip) FROM ips, connexions WHERE ip=ip_from and to_port='{}' group by country_code, country_name order by count(ip) DESC;".format(to_port))
+		c.execute("SELECT country_code, country_name, count(ip) FROM ips, connexions WHERE ip=ip_from AND to_port='{}' GROUP BY country_code, country_name ORDER BY count(ip) DESC;".format(to_port))
 		print("country rank on port : {}".format(to_port))
 	else:
-		c.execute("SELECT country_code, country_name, count(ip) FROM ips group by country_code, country_name order by count(ip) DESC;")
+		c.execute("SELECT country_code, country_name, count(ip) FROM ips GROUP BY country_code, country_name ORDER BY count(ip) DESC;")
 	print("rank : country_code : country_name : nb IP")
 	a= c.fetchall()
 	i = 1
@@ -398,7 +408,7 @@ def geoip_map():
 				query=urlparse.parse_qs(urlparse.urlparse(self.path).query)
 				if 's' in query:
 					if 'countries' in query['s']:
-						c.execute("SELECT country_code, country_name, count(ip) FROM ips GROUP BY country_code order by count(ip) DESC, country_code ASC;")
+						c.execute("SELECT country_code, country_name, count(ip) FROM ips GROUP BY country_code ORDER BY count(ip) DESC, country_code ASC;")
 						self.send_response(200)
 						self.send_header('Content-type','application/javascript')
 						self.end_headers()
@@ -417,7 +427,7 @@ def geoip_map():
 							self.send_header('Content-type','application/javascript')
 							self.end_headers()
 							content="[\n"
-							c.execute("SELECT country_code, latitude, longitude, country_name, city, count(ip) FROM ips where country_code='{}' group by city order by count(ip) DESC, city ASC;".format(query['c'][0]))
+							c.execute("SELECT country_code, latitude, longitude, country_name, city, count(ip) FROM ips WHERE country_code='{}' GROUP BY city ORDER BY count(ip) DESC, city ASC;".format(query['c'][0]))
 							for ip in c.fetchall():
 								content+="[\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",{}],\n".format(ip[0],ip[1],ip[2],ip[3],ip[4],ip[5])
 							if content!="[\n":
@@ -432,7 +442,7 @@ def geoip_map():
 							self.send_header('Content-type','application/javascript')
 							self.end_headers()
 							content="[\n"
-							c.execute("SELECT ip FROM ips where country_code='{}' and latitude='{}' and longitude='{}' order by ip ASC;".format(query['c'][0], query['lat'][0], query['lon'][0]))
+							c.execute("SELECT ip FROM ips WHERE country_code='{}' AND latitude='{}' AND longitude='{}' ORDER BY ip ASC;".format(query['c'][0], query['lat'][0], query['lon'][0]))
 							for ip in c.fetchall():
 								content+="\"{}\",\n".format(ip[0])
 							if content!="[\n":
@@ -517,6 +527,8 @@ else:
 	elif action == "map":
 		import GeoIP
 		geoip_map()
+	elif action == "updb":
+		init_db()
 	else:
 		print("What?")
 		help()
