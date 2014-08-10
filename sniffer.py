@@ -189,169 +189,14 @@ def get_uniques_ips():
 def get_nb_ips():
 	print("Nb ips : {}".format(len(get_uniques_ips())))
 
-#def show_ips():
-#	c.execute("SELECT ip_from, ip_to, to_port, proto FROM connexions;")
-#	a= c.fetchone()
-#	print("num : IP from -> IP to : Port ; proto")
-#	i=1
-#	while a:
-#		print("{} : {} -> {} : {} ; {}".format(i,a[0],a[1],a[2],a[3]))
-#		a= c.fetchone()
-#		i+=1
-
-
-#def gen_map():
-#	from scapy.all import traceroute
-#	res,unans = traceroute(get_uniques_ips(),dport=[80,443],maxttl=20,retry=-2)
-#	res.graph() 
-#	res.graph(type="ps",target="| lp")
-#	res.graph(target="> graph.svg")
-
-#def gen_links():
-#	nodes=[]
-#	for ip in get_uniques_ips():
-#		nodes.append({ 'data': { 'id': ip, 'name': ip, 'weight': '100', 'height': '100' } })
-#	
-#	edges=[]
-#	c.execute("SELECT ip_from, ip_to FROM connexions;")
-#	a= c.fetchone()
-#	while a:
-#		if a[0] != "??" and a[0] != "??":
-#			edges.append({ 'data': { 'source': a[0], 'target': a[1] } })
-#		a= c.fetchone()
-#
-#	elements={'nodes':nodes,'edges':edges}
-#
-#	with io.open('elements.js', 'w', encoding='utf-8') as f:
-#		f.write("var nb_ips="+unicode(str(len(nodes)))+";")
-#		f.write("var elements="+unicode(json.dumps(elements, ensure_ascii=False))+";")
-
-#def get_ips():
-#	i=0;
-#	for ip in get_uniques_ips():
-#		i+=1
-#		print("{} : {}".format(i,ip))
-#	print("\nNb ips : {}".format(i))
-
-
-#def get_stat():
-#	my_ip=get_my_ip()
-#	c.execute("SELECT to_port, proto, count(id), ip_from FROM connexions WHERE ip_to='{}' GROUP BY to_port,proto ORDER BY to_port ASC;".format(my_ip))
-#	a= c.fetchone()
-#	print("port : proto : nb connection on {} (from IP)".format(my_ip))
-#	while a:
-#		if a[2] == 1:
-#			print("{} : {} : {} ({})".format(a[0],a[1],a[2],a[3]))
-#		else:
-#			print("{} : {} : {}".format(a[0],a[1],a[2]))
-#		a= c.fetchone()
-#
-#	c.execute("SELECT to_port, proto, count(id),ip_to, ip_from FROM connexions WHERE ip_to!='{0}' and ip_from!='{0}' GROUP BY ip_to, to_port,proto ORDER BY to_port ASC;".format(my_ip))
-#	a= c.fetchone()
-#	ip=''
-#	while a:
-#		if ip != a[3]:
-#			ip=a[3]
-#			print("\n\nport : proto : nb connection on {} (from IP)".format(ip))
-#		if a[2] == 1:
-#			print("{} : {} : {} ({})".format(a[0],a[1],a[2],a[4]))
-#		else:
-#			print("{} : {} : {}".format(a[0],a[1],a[2]))
-#		a= c.fetchone()
-#
-#	print("\n")
-#	get_nb_ips()
-
-
-#def get_stat_to():
-#	c.execute("SELECT ip_to, to_port, proto, ip_from  FROM connexions WHERE 1 ORDER BY to_port ASC;")
-#	a= c.fetchone()
-#	ip=''
-#	while a:
-#		if ip != a[3]:
-#			ip=a[3]
-#			print("\nConnection from {}".format(ip))
-#			print("IP, port, proto")
-#
-#		print("{} : {} : {}".format(a[0],a[1],a[2]))
-#		a= c.fetchone()
-#
-#def get_stat_me():
-#	my_ip=get_my_ip()
-#	c.execute("SELECT ip_to, to_port, proto  FROM connexions WHERE ip_from='{}' GROUP BY to_port,proto ORDER BY to_port ASC;".format(my_ip))
-#	a= c.fetchone()
-#	print("Connection from {}".format(my_ip))
-#	print("IP, port, proto")
-#	while a:
-#		print("{} : {} : {}".format(a[0],a[1],a[2]))
-#		a= c.fetchone()
-
 def get_stat_me_top():
 	c.execute("SELECT ip_to, to_port, proto, count(ip_from)  FROM connexions WHERE ip_to IN (SELECT data FROM infos WHERE key='my_ip') GROUP BY to_port,proto ORDER BY count(ip_from) DESC LIMIT 10;")
 	a= c.fetchone()
 	print("Top 10 of used port")
-	print("My IP : port : proto : nb IP")
+	print("My IP \t\t: port\t: proto\t: nb IP")
 	while a:
-		print("{} : {} : {} : {}".format(a[0],a[1],a[2],a[3]))
+		print("{}\t: {}\t: {}\t: {}".format((a[0] if len(a[0])>7 else a[0]+"\t"),a[1],a[2],a[3]))
 		a= c.fetchone()
-
-#def geoip_init():
-#	if not os.path.isfile('geoip/GeoLiteCity.dat'):
-#		print("geoip/GeoLiteCity.dat Not found !\nStart downloading http://geolite.maxmind.com/download/geoip/database/geoip/GeoLiteCity.dat.gz")
-#		import urllib, gzip
-#		glcgz = open("geoip/GeoLiteCity.dat.gz",'wb')
-#		glcgz.write(urllib.urlopen("http://geolite.maxmind.com/download/geoip/database/geoip/GeoLiteCity.dat.gz").read(20000000))
-#		glcgz.close()
-#		glcgz = gzip.open("geoip/GeoLiteCity.dat.gz",'rb')
-#		glc = open("geoip/GeoLiteCity.dat",'wb')
-#		glc.write(glcgz.read())
-#		glcgz.close()
-#		glc.close()
-#		os.remove("geoip/GeoLiteCity.dat.gz")
-#
-#	# http://www.go4expert.com/articles/using-geoip-python-t28612/
-#	#geo = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE | GeoIP.GEOIP_CHECK_CACHE)
-#	geo = GeoIP.open("geoip/GeoLiteCity.dat",GeoIP.GEOIP_MEMORY_CACHE | GeoIP.GEOIP_CHECK_CACHE)
-#	c.execute("""CREATE TABLE if not exists ips (  id INTEGER PRIMARY KEY AUTOINCREMENT,
-#													 ip varchar(30),
-#													 country_code varchar(6) DEFAULT NULL,
-#													 country_name TEXT DEFAULT NULL,
-#													 region_name TEXT DEFAULT NULL,
-#													 city TEXT DEFAULT NULL,
-#													 postal_code TEXT DEFAULT NULL,
-#													 latitude TEXT DEFAULT NULL,
-#													 longitude TEXT DEFAULT NULL,
-#													 UNIQUE(ip));""")
-#	conn.commit()
-#
-#	for ip in get_uniques_ips():
-#		info=geo.record_by_addr(ip)
-#		if info:
-#			if info['country_code']:
-#				info['country_code'] = str(info['country_code'])
-#			if info['country_name']:
-#				info['country_name'] = str(info['country_name'])
-#			if info['region_name']:
-#				info['region_name'] = str(info['region_name'])
-#			if info['city']:
-#				info['city'] = str(info['city'])
-#
-#			#print(ip, info['country_code'], info['country_name'], info['region_name'], info['city'], info['postal_code'], info['latitude'], info['longitude'])
-#			c.execute("""INSERT OR IGNORE INTO ips ( ip, country_code, country_name, region_name, city, postal_code, latitude, longitude ) 
-#				VALUES (?, ?, ?, ?, ?, ?, ?, ?);""",(ip, info['country_code'], info['country_name'], info['region_name'], info['city'], info['postal_code'], info['latitude'], info['longitude']))
-#			conn.commit()
-
-#def geoip_():
-#	c.execute("SELECT country_code, country_name, count(ip) FROM ips GROUP BY country_code, country_name ORDER BY count(ip) DESC;")
-#	a= c.fetchone()
-#	print("country_code : country_name : nb IP")
-#	while a:
-#		print("{} : {} : {}".format(a[0],a[1],a[2]))
-#		a= c.fetchone()
-#
-#	c.execute("SELECT count(ip) FROM ips;")
-#	a= c.fetchone()
-#	print("Total IP {}".format(a[0]))
 
 def geoip(to_port=None):
 	if to_port:
@@ -495,24 +340,8 @@ elif action == "stop":
 	os.system('ps -C "sniffer.py start" -o pid=|xargs kill -15')
 else:
 	load_db(False)
-#	if action == "show":
-#		show_ips()
-#	elif action == "map":
-#		gen_map()
-#	elif action == "js":
-#		import json
-#		import io
-#		gen_links()
-#	elif action == "ip":
-#		get_ips()
 	if action == "nbip":
 		get_nb_ips()
-#	elif action == "stat":
-#		get_stat()
-#	elif action == "to":
-#		get_stat_to()
-#	elif action == "me":
-#		get_stat_me()
 	elif action == "top":
 		get_stat_me_top()
 	elif action == "geo":
@@ -521,9 +350,6 @@ else:
 			geoip()
 		else:
 			geoip(sys.argv[2])
-#	elif action == "geoip_init":
-#		import GeoIP
-#		geoip_init()
 	elif action == "map":
 		import GeoIP
 		geoip_map()
